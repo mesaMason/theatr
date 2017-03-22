@@ -75,7 +75,7 @@ rule token = parse
 | "drop"                { ACT_DROP }
 | "after"               { ACT_AFTER }
 | "|"                   { ACT_SEND }
-| “Sender”              { ACT_SENDER}
+| "Sender"              { ACT_SENDER }
 
 (* primitive types *)
 | "int"                 { TYPE_INT }
