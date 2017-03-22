@@ -68,13 +68,8 @@ RunFail() {
 Check() {
     error=0
     basename=`echo $1 | sed 's/.*\\///
-<<<<<<< f1ca37be3a9de246f81e31ca4633fe72d1ae39a0
-                             s/.mc//'`
-    reffile=`echo $1 | sed 's/.mc$//'`
-=======
                              s/.th//'`
     reffile=`echo $1 | sed 's/.th$//'`
->>>>>>> Changed file extension from mc to th
     basedir="`echo $1 | sed 's/\/[^\/]*$//'`/."
 
     echo -n "$basename..."
@@ -106,13 +101,8 @@ Check() {
 CheckFail() {
     error=0
     basename=`echo $1 | sed 's/.*\\///
-<<<<<<< f1ca37be3a9de246f81e31ca4633fe72d1ae39a0
-                             s/.mc//'`
-    reffile=`echo $1 | sed 's/.mc$//'`
-=======
                              s/.th//'`
     reffile=`echo $1 | sed 's/.th$//'`
->>>>>>> Changed file extension from mc to th
     basedir="`echo $1 | sed 's/\/[^\/]*$//'`/."
 
     echo -n "$basename..."
@@ -157,11 +147,7 @@ if [ $# -ge 1 ]
 then
     files=$@
 else
-<<<<<<< f1ca37be3a9de246f81e31ca4633fe72d1ae39a0
-    files="tests/test-*.mc tests/fail-*.mc"
-=======
     files="tests/test-*.th tests/fail-*.th"
->>>>>>> Changed file extension from mc to th
 fi
 
 for file in $files
