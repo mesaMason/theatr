@@ -10,6 +10,9 @@ auto-save-list
 tramp
 .\#*
 
+# compiled files
+scanner.ml
+
 # Org-mode
 .org-id-locations
 *_archive
