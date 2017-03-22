@@ -12,6 +12,7 @@ tramp
 .\#*
 
 # compiled files
+scannerprint.ml
 scanner.ml
 scannerprint.ml
 # Org-mode
