@@ -1,6 +1,7 @@
 _build/
 microc.native
 testall.log
+theatr.native
 *~
 \#*\#
 /.emacs.desktop
@@ -12,7 +13,7 @@ tramp
 
 # compiled files
 scanner.ml
-
+scannerprint.ml
 # Org-mode
 .org-id-locations
 *_archive

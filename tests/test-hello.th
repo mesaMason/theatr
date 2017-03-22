@@ -1,4 +1,7 @@
-func main(List<string> args) -> none:
+int main()
 {
-	print(“Hello world!”)
+    print(42);
+    print(71);
+    print(1);
+    return 0;
 }

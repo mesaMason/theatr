@@ -1,0 +1,116 @@
+The MicroC compiler
+
+Coded in OCaml, this takes a highly stripped-down subset of C (ints,
+bools, and void types, arithmetic, if-else, for, and while statements,
+and user-defined functions) and compiles it into LLVM IR.
+
+It needs the OCaml llvm library, which is most easily installed through opam.
+
+Install LLVM and its development libraries, the m4 macro preprocessor,
+and opam, then use opam to install llvm.
+
+The version of the OCaml llvm library should match the version of the LLVM
+system installed on your system.
+
+------------------------------
+Installation under Ubuntu 14.04
+
+The default LLVM package is 3.4, so we install the matching OCaml library
+using opam.
+
+sudo apt-get install m4 llvm llvm-devel
+
+sudo add-apt-repository --yes ppa:avsm/ppa
+sudo apt-get update -qq
+sudo apt-get install -y opam
+opam init
+
+eval `opam config env`
+
+opam install llvm.3.4
+
+------------------------------
+Installation under OS X
+
+1. Install Homebrew:
+
+   ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+
+2. Verify Homebrew is installed correctly:
+
+   brew doctor
+
+3. Install opam:
+
+   brew install opam
+
+4. Set up opam:
+
+   opam init
+
+5. Install llvm:
+
+   brew install llvm
+
+   Take note of where brew places the llvm executables. It will show
+   you the path to them under the CAVEATS section of the post-install
+   terminal output. For me, they were in /usr/local/opt/llvm/bin. Also
+   take note of the llvm version installed. For me, it was 3.6.2.
+
+6. Have opam set up your enviroment:
+
+   eval `opam config env`
+
+7. Install the OCaml llvm library:
+
+   opam install llvm.3.6 
+
+   Ensure that the version of llvm you install here matches the
+   version you installed via brew. Brew installed llvm version 3.6.2,
+   so I install llvm.3.6 with opam.
+
+   IF YOU HAVE PROBLEMS ON THIS STEP, it's probably because you are
+   missing some external dependencies. Ensure that libffi is installed
+   on your machine. It can be installed via the following command:
+   brew install libffi. If, after this, opam install llvm.3.6
+   is still not working, try running the following command:
+
+   opam list --external --required-by=llvm.3.6
+
+   This will list all of the external dependencies required by
+   llvm.3.6. Install all the dependencies listed by this command.
+
+8. Create a symbolic link to the lli command:
+
+   sudo ln -s /usr/local/opt/llvm/bin/lli /usr/bin/lli
+
+   Create the symlink from wherever brew installs the llvm executables
+   and place it in your bin. From step 5, I know that brew installed
+   the lli executable in the folder, /usr/local/opt/llvm/bin/, so this
+   is where I symlink to. Brew might install the lli executables in a
+   different location for you, so make sure you symlink to the right
+   directory.
+
+9. To run and test, navigate to the MicroC folder. Once there, run
+
+   make ; ./testall.sh
+
+  MicroC should build without any complaints and all tests should
+  pass.
+
+------------------------------
+To run and test:
+
+$ make
+ocamlbuild -use-ocamlfind -pkgs llvm,llvm.analysis -cflags -w,+a-4 microc.native
+Finished, 22 targets (0 cached) in 00:00:01.
+
+$ ./testall.sh
+test-arith1...OK
+test-arith2...OK
+test-arith3...OK
+test-fib...OK
+...
+fail-while1...OK
+fail-while2...OK
+
