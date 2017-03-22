@@ -1,4 +1,4 @@
-The MicroC compiler
+The Theatr compiler
 
 Coded in OCaml, this takes a highly stripped-down subset of C (ints,
 bools, and void types, arithmetic, if-else, for, and while statements,
@@ -91,18 +91,18 @@ Installation under OS X
    different location for you, so make sure you symlink to the right
    directory.
 
-9. To run and test, navigate to the MicroC folder. Once there, run
+9. To run and test, navigate to the Theatr folder. Once there, run
 
    make ; ./testall.sh
 
-  MicroC should build without any complaints and all tests should
+  Theatr should build without any complaints and all tests should
   pass.
 
 ------------------------------
 To run and test:
 
 $ make
-ocamlbuild -use-ocamlfind -pkgs llvm,llvm.analysis -cflags -w,+a-4 microc.native
+ocamlbuild -use-ocamlfind -pkgs llvm,llvm.analysis -cflags -w,+a-4 theatr.native
 Finished, 22 targets (0 cached) in 00:00:01.
 
 $ ./testall.sh
