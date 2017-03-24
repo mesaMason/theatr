@@ -69,22 +69,6 @@ formal_list:
     typ ID                   { [($1,$2)] }
   | formal_list PUNC_COMMA typ ID { ($3,$4) :: $1 }
 
-fdecl:
-   FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE vdecl_list stmt_list FUNC_RETURN expr RBRACE
-     { { typ = $7;
-	 fname = $2;
-	 formals = $4;
-	 locals = List.rev $8;
-	 body = List.rev $9 } }
-
-formals_opt:
-    /* nothing */ { [] }
-  | formal_list   { List.rev $1 }
-
-formal_list:
-    typ ID                   { [($1,$2)] }
-  | formal_list COMMA typ ID { ($3,$4) :: $1 }
-
 typ:
     ptyp { $1 }
   | ctyp { $1 }
