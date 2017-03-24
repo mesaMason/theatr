@@ -1,6 +1,6 @@
 int main()
 {
-    printstr("hello world");
+    printstr("Hello World");
     printstr("hello world!");
     printstr("hello world hello  world   ");
     print(2);
