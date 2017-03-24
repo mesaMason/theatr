@@ -69,16 +69,46 @@ formal_list:
     typ ID                   { [($1,$2)] }
   | formal_list PUNC_COMMA typ ID { ($3,$4) :: $1 }
 
+fdecl:
+   FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE vdecl_list stmt_list FUNC_RETURN expr RBRACE
+     { { typ = $7;
+	 fname = $2;
+	 formals = $4;
+	 locals = List.rev $8;
+	 body = List.rev $9 } }
+
+formals_opt:
+    /* nothing */ { [] }
+  | formal_list   { List.rev $1 }
+
+formal_list:
+    typ ID                   { [($1,$2)] }
+  | formal_list COMMA typ ID { ($3,$4) :: $1 }
+
 typ:
+    ptyp { $1 }
+  | ctyp { $1 }
+
+ptyp:
     TYPE_INT { Int }
   | TYPE_FLOAT { Float }
-  | TYPE_STR { String } 
   | TYPE_BOOL { Bool }
+  | TYPE_CHAR { Char }
+  | TYPE_STR { String }
+  | TYPE_ACTOR { Actor }
+  | TYPE_TUPLE { Tuple }
+  | TYPE_STRUCT { Struct }
   | TYPE_NONE { None }
 
-/* same as MicroC */
-vdecl:
-   typ ID PUNC_SEMI { ($1, $2) }
+ctyp:
+    TYPE_LIST ptyp { ($1, $2) }
+  | TYPE_ARRAY ptyp { ($1, $2) }
+  | TYPE_SET ptyp { ($1, $2) }
+  | TYPE_DICT ptyp ptyp { ($1, $2, $3) }
+
+vdecl_list:
+    /* nothing */    { [] }
+  | vdecl_list vdecl { $2 :: $1 }
 
 /* added vdecls as possible elements of stmt_list */
 stmt_list:

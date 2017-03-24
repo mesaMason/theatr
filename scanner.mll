@@ -1,4 +1,4 @@
-(* Ocamllex scanner for Theatr *)
+(* Ocamllex scanner for MicroC *)
 
 { open Parser }
 
@@ -9,7 +9,7 @@ let double = ('-'?)((digit+'.'digit*) | ('.'digit+))
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
 | "/*"     { comment lexbuf }           (* Comments *)
-| "//"	   { comment_single lexbuf}
+| "//"	   { comment_single lexbuf }
 
 (* braces/parens/brackets *)
 | '('      { LPAREN }
@@ -55,8 +55,9 @@ rule token = parse
 | "<<"                  { BITWISE_LEFT }
 
 (* functions *)
-| "->"                  { FUNC_RET }
-| "return"              { RETURN }
+| "->"                  { FUNC_ARROW }
+| "return"              { FUNC_RETURN }
+| "func"                { FUNC_DECL }
 
 (* flow control *)
 | "if"                  { FLOW_IF }
@@ -67,7 +68,7 @@ rule token = parse
 (* matching *)
 | "case"                { CASE }
 | "match"               { MATCH }
-| '_'                   { WILDCARD  }
+| '_'                   { WILDCARD }
 
 (* actors *)
 | "new"                 { ACT_NEW }
@@ -85,8 +86,6 @@ rule token = parse
 | "bool"                { TYPE_BOOL }
 | "none"                { TYPE_NONE }
 
-(* function declaration *)
-| "func"                { FUNC_DECL }
 
 (* non-primitive types *)
 | "List"                { TYPE_LIST }
@@ -99,7 +98,7 @@ rule token = parse
 		
 (* literals *)
 | digit+ as lxm { INT_LIT(int_of_string lxm) }
-| double as lxm { DOUBLE_LIT(float_of_string lxm) }
+| double as lxm { FLOAT_LIT(float_of_string lxm) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
