@@ -1,7 +1,6 @@
 int main()
 {
-    print(42);
-    print(71);
-    print(1);
+    printstr("helloworld");
+    print(2);
     return 0;
 }
