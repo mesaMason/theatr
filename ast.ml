@@ -6,12 +6,20 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | String | None
+type typ = Int | Bool | String | Char | Float | Tuple | Struct | Actor | None 
 
-type bind = typ * string
+type ctyp =
+    List of typ
+  | Array of typ 
+  | Set of typ
+  | Dict of typ * typ
+
+type bind = 
+    typ * string
+  | ctyp * string 
 
 type expr =
-  | IntLiteral of int
+    IntLiteral of int
   | FloatLiteral of float
   | StrLiteral of string
   | BoolLit of bool

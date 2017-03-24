@@ -64,10 +64,10 @@ formals_opt:
     /* nothing */ { [] }
   | formal_list   { List.rev $1 }
 
-/* same as MicroC */
+/* each element in the list would of bind type */
 formal_list:
-    typ ID                   { [($1,$2)] }
-  | formal_list PUNC_COMMA typ ID { ($3,$4) :: $1 }
+    typ ID                   { [$1 $2] }
+  | formal_list PUNC_COMMA typ ID { $3 $4 :: $1 }
 
 typ:
     ptyp { $1 }
@@ -85,14 +85,19 @@ ptyp:
   | TYPE_NONE { None }
 
 ctyp:
-    TYPE_LIST ptyp { ($1, $2) }
-  | TYPE_ARRAY ptyp { ($1, $2) }
-  | TYPE_SET ptyp { ($1, $2) }
-  | TYPE_DICT ptyp ptyp { ($1, $2, $3) }
+    TYPE_LIST ptyp { List $2 }
+  | TYPE_ARRAY ptyp { Array $2 }
+  | TYPE_SET ptyp { Set $2 }
+  | TYPE_DICT ptyp ptyp { Dict $2 $3 }
 
+(* list of bind type *)
 vdecl_list:
     /* nothing */    { [] }
   | vdecl_list vdecl { $2 :: $1 }
+
+(* bind type *)
+vdecl:
+    typ ID SEMI { $1 $2 }
 
 /* added vdecls as possible elements of stmt_list */
 stmt_list:
@@ -124,18 +129,18 @@ expr:
   | LOGIC_TRUE		   { BoolLit(true) }
   | LOGIC_FALSE		   { BoolLit(false) }
   | ID   	           { Id($1) }
-  | expr ARITH_PLUS   expr { Binop($1, Add,   $3) }
-  | expr ARITH_MINUS  expr { Binop($1, Sub,   $3) }
-  | expr ARITH_TIMES  expr { Binop($1, Mult,  $3) }
-  | expr ARITH_DIVIDE expr { Binop($1, Div,   $3) }
+  | expr ARITH_PLUS   expr { Binop($1, Add, $3) }
+  | expr ARITH_MINUS  expr { Binop($1, Sub, $3) }
+  | expr ARITH_TIMES  expr { Binop($1, Mult,$3) }
+  | expr ARITH_DIVIDE expr { Binop($1, Div, $3) }
   | expr LOGIC_EQ     expr { Binop($1, Equal, $3) }
-  | expr LOGIC_NEQ    expr { Binop($1, Neq,   $3) }
-  | expr LOGIC_LT     expr { Binop($1, Less,  $3) }
-  | expr LOGIC_LEQ    expr { Binop($1, Leq,   $3) }
+  | expr LOGIC_NEQ    expr { Binop($1, Neq, $3) }
+  | expr LOGIC_LT     expr { Binop($1, Less, $3) }
+  | expr LOGIC_LEQ    expr { Binop($1, Leq, $3) }
   | expr LOGIC_GT     expr { Binop($1, Greater, $3) }
-  | expr LOGIC_GEQ    expr { Binop($1, Geq,   $3) }
-  | expr LOGIC_AND    expr { Binop($1, And,   $3) }
-  | expr LOGIC_OR     expr { Binop($1, Or,    $3) }
+  | expr LOGIC_GEQ    expr { Binop($1, Geq, $3) }
+  | expr LOGIC_AND    expr { Binop($1, And, $3) }
+  | expr LOGIC_OR     expr { Binop($1, Or, $3) }
   | ARITH_MINUS expr %prec NEG { Unop(Neg, $2) }
   | LOGIC_NOT expr         { Unop(Not, $2) }
   | ID ASSIGN expr   { Assign($1, $3) }
