@@ -55,8 +55,8 @@ let translate (globals, functions) =
   let build_function_body fdecl =
     let (the_function, _) = StringMap.find fdecl.A.fname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
+    
+    (*let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder in*)
 
     (* Construct the function's "locals": formal arguments and locally
        declared variables.  Allocate each on the stack, initialize their
@@ -112,8 +112,8 @@ let translate (globals, functions) =
           | A.Not     -> L.build_not) e' "tmp" builder
       | A.Assign (s, e) -> let e' = expr builder e in
 	                   ignore (L.build_store e' (lookup s) builder); e'
-      | A.Call ("print", [e]) | A.Call ("printb", [e]) -> L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
-      | A.Call ("printstr", [e]) -> L.build_call printf_func [| (expr builder e) |] "printf" builder
+      | A.Call ("print", [e]) -> 
+              L.build_call printf_func [| expr builder e |] "printf" builder
       | A.Call (f, act) ->
          let (fdef, fdecl) = StringMap.find f function_decls in
 	 let actuals = List.rev (List.map (expr builder) (List.rev act)) in

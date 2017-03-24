@@ -1,8 +1,7 @@
 int main()
 {
-    printstr("Hello World");
-    printstr("hello world!");
-    printstr("hello world hello  world   ");
-    print(2);
+    print("Hello World");
+    print("hello world!");
+    print("hello world hello  world   ");
     return 0;
 }
