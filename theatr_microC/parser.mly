@@ -9,6 +9,7 @@ open Ast
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
 %token RETURN IF ELSE FOR WHILE INT BOOL VOID
 %token <int> LITERAL
+%token <string> STRINGLIT
 %token <string> ID
 %token EOF
 
@@ -85,6 +86,7 @@ expr_opt:
 
 expr:
     LITERAL          { Literal($1) }
+  | STRINGLIT        { StringLit($1) }  
   | TRUE             { BoolLit(true) }
   | FALSE            { BoolLit(false) }
   | ID               { Id($1) }
