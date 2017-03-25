@@ -22,7 +22,7 @@ let check (globals, functions) =
 
   (* Raise an exception if a given binding is to a void type *)
   let check_not_void exceptf = function
-      (Void, n) -> raise (Failure (exceptf n))
+      (None, n) -> raise (Failure (exceptf n))
     | _ -> ()
   in
   
@@ -48,8 +48,8 @@ let check (globals, functions) =
 
   (* Function declaration for a named function *)
   let built_in_decls =  StringMap.singleton "print"
-     { typ = Void; fname = "print"; formals = [(String, "x")];
-       locals = []; body = [] } 
+     { typ = None; fname = "print"; formals = [(String, "x")];
+       body = [] } 
    in
      
   let function_decls = List.fold_left (fun m fd -> StringMap.add fd.fname fd m)
@@ -70,15 +70,17 @@ let check (globals, functions) =
     report_duplicate (fun n -> "duplicate formal " ^ n ^ " in " ^ func.fname)
       (List.map snd func.formals);
 
-    List.iter (check_not_void (fun n -> "illegal void local " ^ n ^
+    (* TODO will need way to chck for duplicate local variables  *)
+    (*List.iter (check_not_void (fun n -> "illegal void local " ^ n ^
       " in " ^ func.fname)) func.locals;
 
     report_duplicate (fun n -> "duplicate local " ^ n ^ " in " ^ func.fname)
-      (List.map snd func.locals);
+      (List.map snd func.locals);*)
 
     (* Type of each variable (global, formal, or local *)
     let symbols = List.fold_left (fun m (t, n) -> StringMap.add n t m)
-	StringMap.empty (globals @ func.formals @ func.locals )
+	StringMap.empty (globals @ func.formals )
+	(*StringMap.empty (globals @ func.formals @ func.locals )*)
     in
 
     let type_of_identifier s =
@@ -88,8 +90,8 @@ let check (globals, functions) =
 
     (* Return the type of an expression or throw an exception *)
     let rec expr = function
-    	Literal _ -> Int
-      | StringLit _ -> String
+    	IntLit _ -> Int
+      | StrLit _ -> String
       | BoolLit _ -> Bool
       | Id s -> type_of_identifier s
       | Binop(e1, op, e2) as e -> let t1 = expr e1 and t2 = expr e2 in
@@ -108,7 +110,7 @@ let check (globals, functions) =
 	 | Not when t = Bool -> Bool
          | _ -> raise (Failure ("illegal unary operator " ^ string_of_uop op ^
 	  		   string_of_typ t ^ " in " ^ string_of_expr ex)))
-      | Noexpr -> Void
+      | Noexpr -> None
       | Assign(var, e) as ex -> let lt = type_of_identifier var
                                 and rt = expr e in
         check_assign (type_of_identifier var) (expr e)

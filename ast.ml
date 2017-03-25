@@ -1,25 +1,17 @@
-(* Abstract Syntax Tree for Theatr
-   and functions for printing it *)
+(* Abstract Syntax Tree and functions for printing it *)
 
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
           And | Or
 
 type uop = Neg | Not
 
-type typ = Int | Bool | String | Char | Float | Tuple | Struct | Actor | None 
-
-type ctyp =
-    List of typ
-  | Array of typ 
-  | Set of typ
-  | Dict of typ * typ
+type typ = Int | Bool | Void | String
 
 type bind = typ * string
 
 type expr =
-    IntLiteral of int
-  | FloatLiteral of float
-  | StrLiteral of string
+    Literal of int
+  | StringLit of string
   | BoolLit of bool
   | Id of string
   | Binop of expr * op * expr
@@ -40,6 +32,7 @@ type func_decl = {
     typ : typ;
     fname : string;
     formals : bind list;
+    locals : bind list;
     body : stmt list;
   }
 
@@ -66,9 +59,8 @@ let string_of_uop = function
   | Not -> "!"
 
 let rec string_of_expr = function
-  | IntLiteral(l) -> string_of_int l
-  | FloatLiteral(l) -> string_of_float l
-  | StrLiteral(l) -> l
+    Literal(l) -> string_of_int l
+  | StringLit(s) -> s
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | Id(s) -> s
@@ -95,8 +87,9 @@ let rec string_of_stmt = function
 
 let string_of_typ = function
     Int -> "int"
+  | String -> "string"
   | Bool -> "bool"
-  | None -> "none"
+  | Void -> "void"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
@@ -104,6 +97,7 @@ let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
   ")\n{\n" ^
+  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
