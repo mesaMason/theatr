@@ -90,14 +90,14 @@ ctyp:
   | TYPE_SET ptyp { Set $2 }
   | TYPE_DICT ptyp ptyp { Dict $2 $3 }
 
-(* list of bind type *)
+/* list of bind type */
 vdecl_list:
     /* nothing */    { [] }
   | vdecl_list vdecl { $2 :: $1 }
 
-(* bind type *)
+/* bind type */
 vdecl:
-    typ ID SEMI { $1 $2 }
+    typ ID PUNC_SEMI { $1 $2 }
 
 /* added vdecls as possible elements of stmt_list */
 stmt_list:

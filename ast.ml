@@ -14,9 +14,7 @@ type ctyp =
   | Set of typ
   | Dict of typ * typ
 
-type bind = 
-    typ * string
-  | ctyp * string 
+type bind = typ * string
 
 type expr =
     IntLiteral of int
@@ -98,7 +96,7 @@ let rec string_of_stmt = function
 let string_of_typ = function
     Int -> "int"
   | Bool -> "bool"
-  | Void -> "void"
+  | None -> "none"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
@@ -106,7 +104,6 @@ let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 

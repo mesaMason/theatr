@@ -23,12 +23,12 @@ let translate (globals, functions) =
   and i32_t  = L.i32_type  context
   and i8_t   = L.i8_type   context
   and i1_t   = L.i1_type   context
-  and void_t = L.void_type context in
+  and none_t = L.void_type context in
 
   let ltype_of_typ = function
       A.Int -> i32_t
     | A.Bool -> i1_t
-    | A.Void -> void_t in
+    | A.None -> none_t in
 
   (* Declare each global variable; remember its value in a map *)
   let global_vars =
@@ -73,7 +73,7 @@ let translate (globals, functions) =
 
       let formals = List.fold_left2 add_formal StringMap.empty fdecl.A.formals
           (Array.to_list (L.params the_function)) in
-      List.fold_left add_local formals fdecl.A.locals in
+      formals in
 
     (* Return the value for a variable or formal argument *)
     let lookup n = try StringMap.find n local_vars
@@ -84,7 +84,7 @@ let translate (globals, functions) =
     (* Construct code for an expression; return its value *)
     let rec expr builder = function
     	A.Literal i -> L.const_int i32_t i
-      | A.StringLit s -> L.build_global_stringptr (s^"\n") "fmt" builder
+      | A.StrLit s -> L.build_global_stringptr (s^"\n") "fmt" builder
       | A.BoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | A.Noexpr -> L.const_int i32_t 0
       | A.Id s -> L.build_load (lookup s) s builder
@@ -117,7 +117,7 @@ let translate (globals, functions) =
       | A.Call (f, act) ->
          let (fdef, fdecl) = StringMap.find f function_decls in
 	 let actuals = List.rev (List.map (expr builder) (List.rev act)) in
-	 let result = (match fdecl.A.typ with A.Void -> ""
+	 let result = (match fdecl.A.typ with A.None -> ""
                                             | _ -> f ^ "_result") in
          L.build_call fdef (Array.of_list actuals) result builder
     in
@@ -135,7 +135,7 @@ let translate (globals, functions) =
 	A.Block sl -> List.fold_left stmt builder sl
       | A.Expr e -> ignore (expr builder e); builder
       | A.Return e -> ignore (match fdecl.A.typ with
-	  A.Void -> L.build_ret_void builder
+	  A.None -> L.build_ret_void builder
 	| _ -> L.build_ret (expr builder e) builder); builder
       | A.If (predicate, then_stmt, else_stmt) ->
          let bool_val = expr builder predicate in
@@ -176,7 +176,7 @@ let translate (globals, functions) =
 
     (* Add a return if the last block falls off the end *)
     add_terminal builder (match fdecl.A.typ with
-        A.Void -> L.build_ret_void
+        A.None -> L.build_ret_void
       | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
   in
 
