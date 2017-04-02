@@ -19,6 +19,14 @@ def insert_mult_char(s, char_pos):
     return s
 
 def update_stack(stack, new_point, result):
+    """	
+    	Each entry in the stack is (a = new_line_character_position, b = number of tabs following new line)
+    	Iterate through the stack in reverse order. The stack always 
+    	has bigger blocks above smaller block. The order is defined by b. 
+
+    	INPUT: stack, new stack entry, a list where result would be appended
+    	result is updated with tuples ('{' or '}', position where brace should be inserted)
+    """
     stack_rev = reversed(stack)
     insert_lbrace_disabled = 0
     for a in stack_rev:
@@ -26,10 +34,11 @@ def update_stack(stack, new_point, result):
         if a[1] > new_point[1]:
             print('insert rbrace at {}'.format(new_point[0]))
             result.append(('}', new_point[0]))
-            # can't insert an lbrace once a rbrace is inserted
+            # can't insert a lbrace once a rbrace is inserted
             insert_lbrace_disabled = 1
             del stack[-1]
         if a[1] == new_point[1]:
+            # can't insert a lbrace once a rbrace is inserted
             insert_lbrace_disabled = 1
             del stack[-1]
         if a[1] < new_point[1]:
@@ -44,26 +53,39 @@ def update_stack(stack, new_point, result):
     print("\n")
 
 def preprocess(filename):
+	"""
+	input: filename to be preprocessor
+	output: filename.out file with braces and semicolons inserted at the end of statement
+	"""
 	f = open(filename,'r')
 	content = f.read()
-	print(content)
 	f.close()
-        # insert semicolon at the end of last statementin each line
+
+	## insert semicolons
+	# insert a new line to help with preprocesinng. this is removed before writing the result
+	content = content + "\n"
+	p = re.compile("[^:]\n")
+	result = []
+	for a in p.finditer(content):
+	    print(a.end())
+	    result.append((';',a.end()-1))
+	content = insert_mult_char(content, result)
+	
+	# insert braces around conditional statements and functions.  
 	p = re.compile("\n *")
 	stack = [('dummy',0)]
 	tab = 4
 	result = []
 	for a in p.finditer(content):
-		assert((len(a.group())-1) % tab == 0)
-		new_point = (a.start(), (len(a.group())-1)//tab)
-		update_stack(stack, new_point, result)
-        # to ensure that for the stack, the file ends with a new line
-        update_stack(stack, ('dummy', 0), result)
-	f = open('filename'+'.out', 'w')
-	print(insert_mult_char(content, result))
-	f.write(insert_mult_char(content, result))
+	    assert((len(a.group())-1) % tab == 0)
+	    new_point = (a.start(), (len(a.group())-1)//tab)
+	    update_stack(stack, new_point, result)
+	f = open(filename+'.out', 'w')
+	content = insert_mult_char(content, result)
+	content = content[:-1]
+	f.write(content)
 	f.close()
 
-files = sys.argv
-for filename in files[1:]:
+files = sys.argv[1:]
+for filename in files:
 	preprocess(filename)
