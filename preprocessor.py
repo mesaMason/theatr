@@ -46,6 +46,9 @@ def update_stack(stack, new_point, result):
 def preprocess(filename):
 	f = open(filename,'r')
 	content = f.read()
+	print(content)
+	f.close()
+        # insert semicolon at the end of last statementin each line
 	p = re.compile("\n *")
 	stack = [('dummy',0)]
 	tab = 4
@@ -54,11 +57,13 @@ def preprocess(filename):
 		assert((len(a.group())-1) % tab == 0)
 		new_point = (a.start(), (len(a.group())-1)//tab)
 		update_stack(stack, new_point, result)
-	insert_mult_char(content, result)
+        # to ensure that for the stack, the file ends with a new line
+        update_stack(stack, ('dummy', 0), result)
 	f = open('filename'+'.out', 'w')
+	print(insert_mult_char(content, result))
 	f.write(insert_mult_char(content, result))
 	f.close()
 
-files = str(sys.argv)
-for filename in files:
+files = sys.argv
+for filename in files[1:]:
 	preprocess(filename)
