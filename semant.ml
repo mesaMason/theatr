@@ -31,7 +31,7 @@ let check (globals, functions) =
   let check_assign lvaluet rvaluet err =
      if lvaluet == rvaluet then lvaluet else raise err
   in
-   
+
   (**** Checking Global Variables ****)
 
   List.iter (check_not_void (fun n -> "illegal void global " ^ n)) globals;
@@ -45,15 +45,27 @@ let check (globals, functions) =
 
   report_duplicate (fun n -> "duplicate function " ^ n)
     (List.map (fun fd -> fd.fname) functions);
+ 
+  (* Dynamically adds to MapString using list of tuples *)
+  let rec add_to_map m li =
+    match li with
+    | [] -> m
+    | hd :: tl -> add_to_map (StringMap.add (fst hd) (snd hd) m) tl
+  in
 
-  (* Function declaration for a named function *)
-  let built_in_decls =  StringMap.singleton "print"
-     { typ = Void; fname = "print"; formals = [(String, "x")];
-       locals = []; body = [] } 
-   in
-     
+  (* Formats list of different print decls by type *)
+  let format_print_decls typ = ("print_" ^ 
+    string_of_typ typ,
+    {typ = Void; fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; locals = []; body = []})
+  in
+
+  let print_typs = List.map format_print_decls [String; Int; Bool] in
+  
+  (* Function declarations for named functions  *)
+  let built_in_decls = add_to_map StringMap.empty print_typs in
+
   let function_decls = List.fold_left (fun m fd -> StringMap.add fd.fname fd m)
-                         built_in_decls functions
+                          built_in_decls functions
   in
 
   let function_decl s = try StringMap.find s function_decls
@@ -112,19 +124,29 @@ let check (globals, functions) =
       | Assign(var, e) as ex -> let lt = type_of_identifier var
                                 and rt = expr e in
         check_assign (type_of_identifier var) (expr e)
-                 (Failure ("illegal assignment " ^ string_of_typ lt ^ " = " ^
-                           string_of_typ rt ^ " in " ^ string_of_expr ex))
+            (Failure ("illegal assignment " ^ string_of_typ lt ^ 
+            " = " ^ string_of_typ rt ^ " in " ^ string_of_expr ex))
+      | Call("print", actuals) as call ->
+        if List.length actuals == 1 then
+            let et = expr (List.hd actuals) in
+            let fd = function_decl ("print_" ^ string_of_typ et) in
+            fd.typ
+        else
+            raise (Failure ("expecting 1 arguments in " ^ 
+                string_of_expr call))
+
       | Call(fname, actuals) as call -> let fd = function_decl fname in
-         if List.length actuals != List.length fd.formals then
-           raise (Failure ("expecting " ^ string_of_int
-             (List.length fd.formals) ^ " arguments in " ^ string_of_expr call))
-         else
-           List.iter2 (fun (ft, _) e -> let et = expr e in
-              ignore (check_assign ft et
-                (Failure ("illegal actual argument found " ^ string_of_typ et ^
-                " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e))))
-             fd.formals actuals;
-           fd.typ
+        if List.length actuals != List.length fd.formals then
+            raise (Failure ("expecting " ^ string_of_int
+            (List.length fd.formals) ^ " arguments in " ^ string_of_expr call))
+        else
+            List.iter2 (fun (ft, _) e -> let et = expr e in
+                ignore (check_assign ft et
+                (Failure ("illegal actual argument found " ^ 
+                string_of_typ et ^ " expected " ^ string_of_typ ft ^ 
+                " in " ^ string_of_expr e))))
+              fd.formals actuals;
+            fd.typ
     in
 
     let check_bool_expr e = if expr e != Bool
