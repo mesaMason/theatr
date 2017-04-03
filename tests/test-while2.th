@@ -1,0 +1,13 @@
+func main() -> int:{
+    int x;
+    
+    print(5);
+    print("hello world!");
+    print(true);
+
+    print(4+3);
+    
+    x = 10;
+    print(x);    
+
+    return 0;}
