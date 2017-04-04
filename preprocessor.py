@@ -32,7 +32,7 @@ def update_stack(stack, new_point, result):
     for a in stack_rev:
         # if new block is smaller or of equal size, keep deleting the blocks below 
         if a[1] > new_point[1]:
-            print('insert rbrace at {}'.format(new_point[0]))
+            # print('insert rbrace at {}'.format(new_point[0]))
             result.append(('}', new_point[0]))
             # can't insert a lbrace once a rbrace is inserted
             insert_lbrace_disabled = 1
@@ -45,14 +45,14 @@ def update_stack(stack, new_point, result):
             # only insert next block if the previous block is one size smaller
             assert(new_point[1] == a[1] + 1)
             if not insert_lbrace_disabled:
-                print('insert lbrace at {}'.format(new_point[0]))
+                # print('insert lbrace at {}'.format(new_point[0]))
                 result.append(('{', new_point[0]))
             break;
     stack.append(new_point)
-    print(stack)
-    print("\n")
+    # print(stack)
+    # print("\n")
 
-def preprocess(filename):
+def preprocess(filename, fileout):
 	"""
 	input: filename to be preprocessor
 	output: filename.out file with braces and semicolons inserted at the end of statement
@@ -60,14 +60,15 @@ def preprocess(filename):
 	f = open(filename,'r')
 	content = f.read()
 	f.close()
-
+	content = re.sub(r'\n\s*\n', '\n', content)
+	content = re.sub(r' *\n', '\n', content)
 	## insert semicolons
 	# insert a new line to help with preprocesinng. this is removed before writing the result
 	content = content + "\n"
-	p = re.compile("[^:]\n")
+	p = re.compile("[^\s:;]\n")
 	result = []
 	for a in p.finditer(content):
-	    print(a.end())
+	    # print(a.end())
 	    result.append((';',a.end()-1))
 	content = insert_mult_char(content, result)
 	
@@ -80,12 +81,11 @@ def preprocess(filename):
 	    assert((len(a.group())-1) % tab == 0)
 	    new_point = (a.start(), (len(a.group())-1)//tab)
 	    update_stack(stack, new_point, result)
-	f = open(filename+'.out', 'w')
+	f = open(fileout, 'w')
 	content = insert_mult_char(content, result)
 	content = content[:-1]
 	f.write(content)
 	f.close()
 
 files = sys.argv[1:]
-for filename in files:
-	preprocess(filename)
+preprocess('tests/'+files[0], files[1])

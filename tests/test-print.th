@@ -1,5 +1,4 @@
-func main() -> int:
-{
+func main() -> int:{
     int x;
     
     print(5);
@@ -11,5 +10,4 @@ func main() -> int:
     x = 10;
     print(x);    
 
-    return 0;
-}
+    return 0;}

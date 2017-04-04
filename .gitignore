@@ -3,6 +3,10 @@ microc.native
 testall.log
 theatr.native
 *~
+*.temp
+*.diff
+__pycache__
+*.ll
 \#*\#
 /.emacs.desktop
 /.emacs.desktop.lock
