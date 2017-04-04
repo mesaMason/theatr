@@ -88,4 +88,4 @@ def preprocess(filename, fileout):
 	f.close()
 
 files = sys.argv[1:]
-preprocess('tests/'+files[0], files[1])
+preprocess(files[0], files[1])

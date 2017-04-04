@@ -1,13 +1,14 @@
-func main() -> int:{
-    int x;
-    
-    print(5);
-    print("hello world!");
-    print(true);
+func main() -> int:
 
-    print(4+3);
+    int x
     
-    x = 10;
-    print(x);    
+    print(5)
+    print("hello world!")
+    print(true)
 
-    return 0;}
+    print(4+3)
+    
+    x = 10
+    print(x)
+
+    return 0

@@ -1,9 +1,5 @@
 func main() -> int:
-{
-    int i;
+    int i
     for (i = 0; i < 5; i = i+1):
-    {
-        print("hello!");
-    }
-    return 0;
-}
+        print("hello!")
+    return 0

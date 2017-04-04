@@ -5,6 +5,7 @@
 #  Compile, run, and check the output of each expected-to-work test
 #  Compile and check the error of each expected-to-fail test
 
+PRE="./preprocessor.py"
 THEATR="./theatr.native"
 LLI="lli"
 
@@ -80,11 +81,13 @@ Check() {
     generatedfiles=""
 
     generatedfiles="$generatedfiles ${basename}.ll ${basename}.out" &&
-    Run "$THEATR" "<" $1 ">" "${basename}.ll" &&
+
+    Run "$PRE" $1 "${basename}.temp" &&
+    Run "$THEATR" "<" "${basename}.temp" ">" "${basename}.ll" &&    
     Run "$LLI" "${basename}.ll" ">" "${basename}.out" &&
     Compare ${basename}.out ${reffile}.out ${basename}.diff
 
-    # Report the status and clean up the generated files
+    # Report the status an"${basename}.temp"d clean up the generated files
 
     if [ $error -eq 0 ] ; then
 	if [ $keep -eq 0 ] ; then
@@ -111,9 +114,9 @@ CheckFail() {
     echo "###### Testing $basename" 1>&2
 
     generatedfiles=""
-
     generatedfiles="$generatedfiles ${basename}.err ${basename}.diff" &&
-    RunFail "$THEATR" "<" $1 "2>" "${basename}.err" ">>" $globallog &&
+    Run "$PRE" $1 "${basename}.temp" &&
+    RunFail "$THEATR" "<" "${basename}.temp" "2>" "${basename}.err" ">>" $globallog &&
     Compare ${basename}.err ${reffile}.err ${basename}.diff
 
     # Report the status and clean up the generated files

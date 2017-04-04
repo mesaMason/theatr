@@ -1,7 +1,5 @@
 func main() -> int:
-{
-    print("Hello World");
-    print("hello world!");
-    print("hello world hello  world   ");
-    return 0;
-}
+    print("Hello World")
+    print("hello world!")
+    print("hello world hello  world   ")
+    return 0
