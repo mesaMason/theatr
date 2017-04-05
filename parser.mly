@@ -9,7 +9,7 @@ open Ast
 %token PLUS MINUS TIMES DIVIDE ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
 %token RETURN IF ELSE FOR WHILE INT BOOL VOID
-%token <int> LITERAL
+%token <int> INTLIT
 %token <string> STRINGLIT
 %token <string> ID
 %token EOF
@@ -86,7 +86,7 @@ expr_opt:
   | expr          { $1 }
 
 expr:
-    LITERAL          { Literal($1) }
+    INTLIT          { IntLit($1) }
   | STRINGLIT        { StringLit($1) }  
   | TRUE             { BoolLit(true) }
   | FALSE            { BoolLit(false) }
