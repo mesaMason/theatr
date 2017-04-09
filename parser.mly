@@ -74,12 +74,16 @@ msg_decl:
 	  mbody = List.rev $8 } }
 	  
 drop:
-    /* nothing */ { [] }
-  | DROP COLON LBRACE stmt_list RBRACE { List.rev $4 }
+      /* nothing */ { { dalocals = []; dabody = [] } }
+    | DROP COLON LBRACE vdecl_list stmt_list RBRACE
+      { { dalocals = List.rev $4;
+	  dabody = List.rev $5 } }
 
 after:
-    /* nothing */ { [] }
-  | AFTER COLON LBRACE stmt_list RBRACE { List.rev $4 }
+      /* nothing */ { { dalocals = []; dabody = [] } }
+    | AFTER COLON LBRACE vdecl_list stmt_list RBRACE
+      { { dalocals = List.rev $4;
+	  dabody = List.rev $5 } }
 
 fdecl:
    FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE vdecl_list stmt_list RBRACE

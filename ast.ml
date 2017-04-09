@@ -43,13 +43,18 @@ type msg_decl = {
     mbody : stmt list;
   }
 		   
+type drop_after_decl = {
+    dalocals : bind list;
+    dabody : stmt list;
+  }
+
 type actor_decl = {
     aname : string;
     aformals : bind list;
     alocals : bind list;
     receives : msg_decl list;
-    drop : stmt list;
-    after : stmt list;
+    drop : drop_after_decl;
+    after : drop_after_decl;
   }
 		   
 type program = bind list * func_decl list * actor_decl list
@@ -129,8 +134,10 @@ let string_of_adecl adecl =
   ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl adecl.alocals) ^
   "\nreceives:\n" ^ String.concat "" (List.map string_of_mdecl adecl.receives) ^
-  "\ndrop:\n" ^ String.concat "" (List.map string_of_stmt adecl.drop) ^    
-  "\nafter:\n" ^ String.concat "" (List.map string_of_stmt adecl.after) ^    
+  "\ndrop:\n" ^ String.concat "" (List.map string_of_vdecl adecl.drop.dalocals) ^
+  String.concat "" (List.map string_of_stmt adecl.drop.dabody) ^
+  "\nafter:\n" ^ String.concat "" (List.map string_of_vdecl adecl.after.dalocals) ^    
+  String.concat "" (List.map string_of_stmt adecl.after.dabody) ^
   "}\n"
 
 let string_of_program (vars, funcs, actors) =
