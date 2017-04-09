@@ -36,7 +36,23 @@ type func_decl = {
     body : stmt list;
   }
 
-type program = bind list * func_decl list
+type msg_decl = {
+    mname : string;
+    mformals : bind list;
+    mlocals : bind list;
+    mbody : stmt list;
+  }
+		   
+type actor_decl = {
+    aname : string;
+    aformals : bind list;
+    alocals : bind list;
+    receives : msg_decl list;
+    drop : stmt list;
+    after : stmt list;
+  }
+		   
+type program = bind list * func_decl list * actor_decl list
 
 (* Pretty-printing functions *)
 
@@ -101,6 +117,23 @@ let string_of_fdecl fdecl =
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_program (vars, funcs) =
+let string_of_mdecl mdecl =
+  mdecl.mname ^ "(" ^ String.concat ", " (List.map snd mdecl.mformals) ^
+  ")\n{\n" ^
+  String.concat "" (List.map string_of_vdecl mdecl.mlocals) ^
+  String.concat "" (List.map string_of_stmt mdecl.mbody) ^
+  "}\n"
+
+let string_of_adecl adecl =
+  adecl.aname ^ "(" ^ String.concat ", " (List.map snd adecl.aformals) ^
+  ")\n{\n" ^
+  String.concat "" (List.map string_of_vdecl adecl.alocals) ^
+  "\nreceives:\n" ^ String.concat "" (List.map string_of_mdecl adecl.receives) ^
+  "\ndrop:\n" ^ String.concat "" (List.map string_of_stmt adecl.drop) ^    
+  "\nafter:\n" ^ String.concat "" (List.map string_of_stmt adecl.after) ^    
+  "}\n"
+
+let string_of_program (vars, funcs, actors) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
+  String.concat "\n" (List.map string_of_adecl actors) ^ "\n"

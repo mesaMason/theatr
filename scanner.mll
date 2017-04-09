@@ -14,7 +14,9 @@ rule token = parse
 | ')'      { RPAREN }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
-
+| "receive" { RECEIVE }
+| "drop"   { DROP }
+| "after"  { AFTER }	   
 | "->"     { FUNC_ARROW }
 | "func"   { FUNC_DECL }
 | ':'      { COLON }
