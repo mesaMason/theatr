@@ -26,6 +26,7 @@ let translate (globals, functions, actors) =
 
   let ltype_of_ptyp = function
       A.Int -> i32_t
+    | A.Double -> i8_t
     | A.Bool -> i1_t
     | A.Void -> void_t
     | A.String -> i32_t
@@ -122,6 +123,7 @@ let translate (globals, functions, actors) =
    (* Construct code for an expression; return its value *)
     let rec expr builder = function
     	A.IntLit i -> L.const_int i32_t i
+      | A.DoubleLit f -> L.const_float i8_t f
       | A.StringLit s -> format_str_str s
       | A.BoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | A.Noexpr -> L.const_int i32_t 0
