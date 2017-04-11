@@ -110,6 +110,7 @@ let check (globals, functions, actors) =
     (* Return the type of an expression or throw an exception *)
     let rec expr = function
     	IntLit _ -> Ptyp(Int)
+      | DoubleLit _ -> Ptyp(Double)
       | StringLit _ -> Ptyp(String)
       | BoolLit _ -> Ptyp(Bool)
       | Id s -> type_of_identifier s
@@ -126,7 +127,8 @@ let check (globals, functions, actors) =
       | Binop(e1, op, e2) as e -> let t1 = expr e1 and t2 = expr e2 in
 	(match op with
           Add | Sub | Mult | Div when t1 = Ptyp(Int) && t2 = Ptyp(Int) -> Ptyp(Int)
-	| Equal | Neq when t1 = t2 -> Ptyp(Bool)
+	    | Add | Sub | Mult | Div when t1 = Ptyp(Double) && t2 = Ptyp(Double) -> Ptyp(Double)
+    | Equal | Neq when t1 = t2 -> Ptyp(Bool)
 	| Less | Leq | Greater | Geq when t1 = Ptyp(Int) && t2 = Ptyp(Int) -> Ptyp(Bool)
 	| And | Or when t1 = Ptyp(Bool) && t2 = Ptyp(Bool) -> Ptyp(Bool)
         | _ -> raise (Failure ("illegal binary operator " ^
