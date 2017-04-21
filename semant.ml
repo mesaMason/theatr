@@ -71,7 +71,7 @@ let check (globals, functions, actors) =
     {typ = Void; fname = "print:" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
   in
 
-  let print_typs = List.map format_print_decls [String; Int; Bool] in
+  let print_typs = List.map format_print_decls [String; Int; Double; Bool] in
   let built_in_decls = add_to_map StringMap.empty print_typs in
   
   (* Function declarations for named functions  *)
