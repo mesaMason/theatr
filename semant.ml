@@ -9,7 +9,7 @@ module StringMap = Map.Make(String)
 
    Check each global variable, then check each function *)
 
-let check (globals, functions) =
+let check (globals, functions, actors) =
 
   (* Raise an exception if the given list has a duplicate *)
   let report_duplicate exceptf list =
@@ -31,6 +31,10 @@ let check (globals, functions) =
   let check_assign lvaluet rvaluet err =
      if lvaluet == rvaluet then lvaluet else raise err
   in
+
+  (**** Checking Actors ****)
+  report_duplicate (fun n -> "duplicate actor " ^ n)
+    (List.map (fun an -> an.aname) actors);
 
   (**** Checking Global Variables ****)
 

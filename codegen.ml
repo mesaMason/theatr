@@ -17,7 +17,7 @@ module A = Ast
 
 module StringMap = Map.Make(String)
 
-let translate (globals, functions) =
+let translate (globals, functions, actors) =
   let context = L.global_context () in
   let the_module = L.create_module context "Theatr"
   and i32_t  = L.i32_type  context

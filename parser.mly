@@ -9,6 +9,7 @@ open Ast
 %token PLUS MINUS TIMES DIVIDE ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
 %token RETURN IF ELSE FOR WHILE INT BOOL VOID FLOAT
+%token RECEIVE DROP AFTER
 %token <int> INTLIT
 %token <float> FLOATLIT
 %token <string> STRINGLIT
@@ -35,9 +36,55 @@ program:
   decls EOF { $1 }
 
 decls:
-   /* nothing */ { [], [] }
- | decls vdecl { ($2 :: fst $1), snd $1 }
- | decls fdecl { fst $1, ($2 :: snd $1) }
+   /* nothing */ { [], [], [] }
+ | decls vdecl { match $1 with (vars,funcs,actors) -> (($2 :: vars), funcs, actors) }
+ | decls fdecl { match $1 with (vars,funcs,actors) -> (vars, ($2 :: funcs), actors) }
+ | decls adecl { match $1 with (vars,funcs,actors) -> (vars, funcs, ($2 :: actors)) }
+
+/* actor declaration
+LBRACE and RBRACE: these will be inserted by the preprocessor
+formals_opt and vdecl_list act the same as in fdecl
+receives is a msg_decl list
+drop and after are stmt lists
+*/
+adecl:
+   ID LPAREN formals_opt RPAREN COLON LBRACE vdecl_list receives drop after RBRACE
+     { { aname = $1;
+	 aformals = $3;
+	 alocals = List.rev $7;
+	 receives = $8;
+	 drop = $9;
+	 after = $10; } }
+
+receives:
+    /* nothing */ { [] }
+  | RECEIVE COLON LBRACE msg_decl_list RBRACE { List.rev $4 }
+     
+msg_decl_list:
+    /* nothing */ { [] }
+  | msg_decl_list msg_decl { $2 :: $1 }		  
+
+/* declaration of what an actor does upon receiving the message
+structure is very similar to functions
+*/
+msg_decl:
+    ID LPAREN formals_opt RPAREN COLON LBRACE vdecl_list stmt_list RBRACE	
+      { { mname = $1;
+	  mformals = $3;
+	  mlocals = List.rev $7;
+	  mbody = List.rev $8 } }
+	  
+drop:
+      /* nothing */ { { dalocals = []; dabody = [] } }
+    | DROP COLON LBRACE vdecl_list stmt_list RBRACE
+      { { dalocals = List.rev $4;
+	  dabody = List.rev $5 } }
+
+after:
+      /* nothing */ { { dalocals = []; dabody = [] } }
+    | AFTER COLON LBRACE vdecl_list stmt_list RBRACE
+      { { dalocals = List.rev $4;
+	  dabody = List.rev $5 } }
 
 fdecl:
    FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE vdecl_list stmt_list RBRACE
