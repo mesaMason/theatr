@@ -23,10 +23,12 @@ let translate (globals, functions) =
   and i32_t  = L.i32_type  context
   and i8_t   = L.i8_type   context
   and i1_t   = L.i1_type   context
-  and void_t = L.void_type context in
+  and void_t = L.void_type context 
+  and f_t    = L.double_type context in
 
   let ltype_of_typ = function
       A.Int -> i32_t
+    | A.Float -> f_t
     | A.Bool -> i1_t
     | A.Void -> void_t in
 
@@ -58,10 +60,13 @@ let translate (globals, functions) =
     
     let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder in
     let format_str_str s = L.build_global_stringptr (s^"\n") "fmt" builder in
+    let format_float_str = L.build_global_stringptr "%f\n" "fmt" builder in
 
     let get_format_typ_str typ =
         match typ with
       | "i32" -> format_int_str
+      | "double" -> format_float_str 
+      | _     -> raise (Failure("invalid type passed to print, "^typ))
     in
 
     (* Construct the function's "locals": formal arguments and locally
@@ -90,6 +95,7 @@ let translate (globals, functions) =
     (* Construct code for an expression; return its value *)
     let rec expr builder = function
     	A.IntLit i -> L.const_int i32_t i
+      | A.FloatLit f -> L.const_float f_t f
       | A.StringLit s -> format_str_str s
       | A.BoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | A.Noexpr -> L.const_int i32_t 0

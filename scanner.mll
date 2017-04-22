@@ -6,6 +6,8 @@ let letter = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']
 let punct = [' '-'!' '#'-'[' ']'-'~']
 let str = (letter | digit | punct)* as s
+let fl = (digit+) ['.'] digit+
+let id = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
@@ -40,14 +42,16 @@ rule token = parse
 | "while"  { WHILE }
 | "return" { RETURN }
 | "int"    { INT }
+| "float"  { FLOAT }
 | "bool"   { BOOL }
 | "void"   { VOID }
 | "true"   { TRUE }
 | "false"  { FALSE }
-| ['0'-'9']+ as lxm { INTLIT(int_of_string lxm) }
-| '"' str '"' { STRINGLIT(s) }
-| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
-| eof { EOF }
+| ['0'-'9']+ as lxm     { INTLIT(int_of_string lxm) }
+| '"' str '"'           { STRINGLIT(s) }
+| fl as lxm             { FLOATLIT(float_of_string lxm)}
+| id as lxm             { ID(lxm) }
+| eof                   { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
 
 and comment = parse

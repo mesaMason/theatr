@@ -8,8 +8,9 @@ open Ast
 %token FUNC_DECL FUNC_ARROW
 %token PLUS MINUS TIMES DIVIDE ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
-%token RETURN IF ELSE FOR WHILE INT BOOL VOID
+%token RETURN IF ELSE FOR WHILE INT BOOL VOID FLOAT
 %token <int> INTLIT
+%token <float> FLOATLIT
 %token <string> STRINGLIT
 %token <string> ID
 %token EOF
@@ -56,6 +57,7 @@ formal_list:
 
 typ:
     INT { Int }
+  | FLOAT { Float }
   | BOOL { Bool }
   | VOID { Void }
 
@@ -86,10 +88,11 @@ expr_opt:
   | expr          { $1 }
 
 expr:
-    INTLIT          { IntLit($1) }
-  | STRINGLIT        { StringLit($1) }  
-  | TRUE             { BoolLit(true) }
-  | FALSE            { BoolLit(false) }
+    INTLIT           { IntLit($1)}
+  | FLOATLIT         { FloatLit($1)}
+  | STRINGLIT        { StringLit($1)}  
+  | TRUE             { BoolLit(true)}
+  | FALSE            { BoolLit(false)}
   | ID               { Id($1) }
   | expr PLUS   expr { Binop($1, Add,   $3) }
   | expr MINUS  expr { Binop($1, Sub,   $3) }

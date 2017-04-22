@@ -1,0 +1,25 @@
+func main() -> int:
+    float f
+    float g
+    float k
+
+    float sum
+    float prod
+    float sub
+    float div
+
+    f = 2.55
+    g = 4.1
+    k = 6.7
+
+    sum = f + g
+    prod = g * k
+    sub = k - g
+    div = k / f
+
+    print(sum)
+    print(prod)
+    print(sub)
+    print(div)
+
+    return 0
