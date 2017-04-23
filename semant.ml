@@ -60,7 +60,7 @@ let check (globals, functions, actors) =
   (* Formats list of different print decls by type *)
   let format_print_decls typ = ("print_" ^ 
     string_of_typ typ,
-    {typ = Void; fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; locals = []; body = []})
+    {typ = Void; fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
   in
 
   let print_typs = List.map format_print_decls [String; Int; Bool] in
@@ -86,15 +86,25 @@ let check (globals, functions, actors) =
     report_duplicate (fun n -> "duplicate formal " ^ n ^ " in " ^ func.fname)
       (List.map snd func.formals);
 
+    let locals = 
+        let add_local l stmt = match stmt with
+	  | Vdecl (t, n) ->
+	     (t, n) :: l
+	  | _ -> l
+        in
+	List.fold_left add_local [] func.body
+    in 
+    (*
     List.iter (check_not_void (fun n -> "illegal void local " ^ n ^
       " in " ^ func.fname)) func.locals;
 
     report_duplicate (fun n -> "duplicate local " ^ n ^ " in " ^ func.fname)
       (List.map snd func.locals);
-
+     *)
+    
     (* Type of each variable (global, formal, or local *)
     let symbols = List.fold_left (fun m (t, n) -> StringMap.add n t m)
-	StringMap.empty (globals @ func.formals @ func.locals )
+	StringMap.empty (globals @ func.formals @ locals )
     in
 
     let type_of_identifier s =
@@ -167,6 +177,7 @@ let check (globals, functions, actors) =
          | [] -> ()
         in check_block sl
       | Expr e -> ignore (expr e)
+      | Vdecl v -> ignore (v) (* TODO checking here *)
       | Return e -> let t = expr e in if t = func.typ then () else
          raise (Failure ("return gives " ^ string_of_typ t ^ " expected " ^
                          string_of_typ func.typ ^ " in " ^ string_of_expr e))

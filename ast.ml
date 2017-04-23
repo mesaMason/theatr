@@ -23,6 +23,7 @@ type expr =
 type stmt =
     Block of stmt list
   | Expr of expr
+  | Vdecl of bind
   | Return of expr
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
@@ -32,19 +33,16 @@ type func_decl = {
     typ : typ;
     fname : string;
     formals : bind list;
-    locals : bind list;
     body : stmt list;
   }
 
 type msg_decl = {
     mname : string;
     mformals : bind list;
-    mlocals : bind list;
     mbody : stmt list;
   }
 		   
 type drop_after_decl = {
-    dalocals : bind list;
     dabody : stmt list;
   }
 
@@ -118,14 +116,12 @@ let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
 let string_of_mdecl mdecl =
   mdecl.mname ^ "(" ^ String.concat ", " (List.map snd mdecl.mformals) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl mdecl.mlocals) ^
   String.concat "" (List.map string_of_stmt mdecl.mbody) ^
   "}\n"
 
@@ -134,10 +130,8 @@ let string_of_adecl adecl =
   ")\n{\n" ^
   String.concat "" (List.map string_of_vdecl adecl.alocals) ^
   "\nreceives:\n" ^ String.concat "" (List.map string_of_mdecl adecl.receives) ^
-  "\ndrop:\n" ^ String.concat "" (List.map string_of_vdecl adecl.drop.dalocals) ^
-  String.concat "" (List.map string_of_stmt adecl.drop.dabody) ^
-  "\nafter:\n" ^ String.concat "" (List.map string_of_vdecl adecl.after.dalocals) ^    
-  String.concat "" (List.map string_of_stmt adecl.after.dabody) ^
+  "\ndrop:\n" ^ String.concat "" (List.map string_of_stmt adecl.drop.dabody) ^
+  "\nafter:\n" ^ String.concat "" (List.map string_of_stmt adecl.after.dabody) ^
   "}\n"
 
 let string_of_program (vars, funcs, actors) =

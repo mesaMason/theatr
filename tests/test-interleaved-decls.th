@@ -1,0 +1,14 @@
+
+
+func foo(int a) -> int:
+    return a + 1;
+
+int global;
+
+func main() -> int:
+    global = 0;
+    int val;
+    val = foo(global);
+    val = 4;
+    print(val);
+    return 0
