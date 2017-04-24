@@ -43,6 +43,12 @@ let check bl =
     | _ -> ""
   in
 
+  let filter_f b = if b = Fdef(_) then true else false
+  in
+
+  let filter_e b = if b = Entry(_) then true else false
+  in
+
   (* check duplicate global function or variable *)
   report_duplicate (fun n -> "duplicate global func/var " ^ n) (List.filter filter_empty (List.map get_name bl));
 
@@ -68,6 +74,10 @@ let check bl =
     | Stmt(_) -> ()             
   in
 
+  (* check void entry in all global variables *)
+  let el = List.map (fun Entry(e) -> e) (List.filter filter_e bl)
+  in check_not_void (fun n -> get_vname ^ "is None type") el;
+     
   (* Raise an exception of the given rvalue type cannot be assigned to
      the given lvalue type *)
   let check_assign lvaluet rvaluet err =
@@ -80,7 +90,10 @@ let check bl =
       Fdef(f) -> if f.fname = "print"
                  then raise (Failure ("function print may not be defined")) else ();
     | Entry(_) -> ()
- 
+  in
+
+  List.iter check_print_dup bl;
+  
   (* Dynamically adds to MapString using list of tuples *)
   let rec add_to_map m li =
     match li with
@@ -91,7 +104,7 @@ let check bl =
   (* Formats list of different print decls by type *)
   let format_print_decls typ = ("print_" ^ 
     string_of_typ typ,
-    {typ = Void; fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; locals = []; body = []})
+    {rtyp = Ptyp(None); fname = "print_" ^ string_of_typ typ; formals = [(Ptyp(typ), "x")]; body = []})
   in
 
   let print_typs = List.map format_print_decls [String; Int; Bool] in
