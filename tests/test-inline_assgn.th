@@ -1,0 +1,4 @@
+func main() -> int:
+    int i = 4
+    print(i)
+    return 0

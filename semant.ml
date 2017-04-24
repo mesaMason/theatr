@@ -7,9 +7,9 @@ module StringMap = Map.Make(String)
 (* Semantic checking of a program. Returns void if successful,
    throws an exception if something is wrong.
 
-   Check each global variable, then check each function *)
+   Check the bind list *)
 
-let check (globals, functions) =
+let check bl =
 
   (* Raise an exception if the given list has a duplicate *)
   let report_duplicate exceptf list =
@@ -20,31 +20,66 @@ let check (globals, functions) =
     in helper (List.sort compare list)
   in
 
-  (* Raise an exception if a given binding is to a void type *)
-  let check_not_void exceptf = function
-      (Void, n) -> raise (Failure (exceptf n))
-    | _ -> ()
+  (* return the name of funciton or variable given a bind type *)
+
+  let get_vname = function
+      Vdecl(_, n) -> n
+    | Vdef(_, n, _) -> n
+    | Stmt(_) -> ""
   in
-  
+
+  let get_name = function
+      Entry(e) -> get_vname e
+    | Fdef(f) -> f.fname
+  in
+
+  let filter_empty = function
+      "" -> false
+    | _ -> true
+  in
+
+  let get_func_body = function
+      Fdef(f) -> f.body
+    | _ -> ""
+  in
+
+  (* check duplicate global function or variable *)
+  report_duplicate (fun n -> "duplicate global func/var " ^ n) (List.filter filter_empty (List.map get_name bl));
+
+  (* check duplicate local variable in each function *)
+  let fblist = List.map get_func_body bl
+  in let ffblist = List.filter filter_empty fblist
+     in let fvlist = List.map (fun el -> List.map get_name el) ffblist
+        in let ffvlist = List.map (fun nl -> List.filter filter_empty nl) fvlist
+           in List.iter (report_duplicate (fun f v -> "duplicate var " ^ v ^ "in function" ^ f)) ffvlist;
+
+  (* return the ptyp given the typ*)
+  let get_ptyp = function
+      Ptyp(a) -> a
+    | Ctyp(_, b) -> a
+  in
+      
+  (* Raise an exception if a given entry is bind to a void type *)
+  let check_not_void exceptf = function
+      Vdecl(t, n) -> let pt = get_ptyp t in
+                     if pt = None then raise (Failure (exceptf n)) else ()
+    | Vdef(t, n, _) -> let pt = get_ptyp t in
+                       if pt = None then raise (Failure (exceptf n)) else ()
+    | Stmt(_) -> ()             
+  in
+
   (* Raise an exception of the given rvalue type cannot be assigned to
      the given lvalue type *)
   let check_assign lvaluet rvaluet err =
      if lvaluet == rvaluet then lvaluet else raise err
   in
 
-  (**** Checking Global Variables ****)
-
-  List.iter (check_not_void (fun n -> "illegal void global " ^ n)) globals;
-   
-  report_duplicate (fun n -> "duplicate global " ^ n) (List.map snd globals);
-
   (**** Checking Functions ****)
 
-  if List.mem "print" (List.map (fun fd -> fd.fname) functions)
-  then raise (Failure ("function print may not be defined")) else ();
-
-  report_duplicate (fun n -> "duplicate function " ^ n)
-    (List.map (fun fd -> fd.fname) functions);
+  let check_print_dup = function
+      Fdef(f) -> if f.fname = "print"
+                 then raise (Failure ("function print may not be defined")) else ();
+    | Entry(_) -> ()
  
   (* Dynamically adds to MapString using list of tuples *)
   let rec add_to_map m li =

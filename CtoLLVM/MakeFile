@@ -1,0 +1,9 @@
+# -*- MakeFile -*-
+CC = clang
+CFLAGS = -cc1 -emit-llvm
+
+.PHONY
+clean:
+	rm -f *.o a.out main
+.PHONY: all
+all: clean main

@@ -4,11 +4,12 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA COLON
+%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA COLON LBRACKET RBRACKET
 %token FUNC_DECL FUNC_ARROW
 %token PLUS MINUS TIMES DIVIDE ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
-%token RETURN IF ELSE FOR WHILE INT BOOL VOID
+%token RETURN IF ELSE FOR WHILE INT BOOL NONE STRING
+%token LIST ARRAY
 %token <int> INTLIT
 %token <string> STRINGLIT
 %token <string> ID
@@ -31,45 +32,64 @@ open Ast
 %%
 
 program:
-  decls EOF { $1 }
+  decls EOF { List.rev $1 }
 
 decls:
-   /* nothing */ { [], [] }
- | decls vdecl { ($2 :: fst $1), snd $1 }
- | decls fdecl { fst $1, ($2 :: snd $1) }
-
-fdecl:
-   FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE vdecl_list stmt_list RBRACE
-     { { typ = $7;
+   /* nothing */ { [] }
+ | decls entry { (Entry($2) :: $1) }
+ | decls fdef { (Fdef($2) :: $1) }
+ 
+fdef:
+   FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE entry_list_opt RBRACE
+     { { formals = $4;
+         rtyp = $7;
 	 fname = $2;
-	 formals = $4;
-	 locals = List.rev $10;
-	 body = List.rev $11 } }
+	 body = $10 } }
 
 formals_opt:
     /* nothing */ { [] }
   | formal_list   { List.rev $1 }
-
+ 
 formal_list:
-    typ ID                   { [($1,$2)] }
-  | formal_list COMMA typ ID { ($3,$4) :: $1 }
+    typ ID   { [($1,$2)] }
+  | formal_list COMMA typ ID { ($3, $4) :: $1 }
 
 typ:
+    ptyp { Ptyp($1) }
+  | ctyp LT ptyp GT{ Ctyp($1, $3) }
+
+ptyp:
     INT { Int }
   | BOOL { Bool }
-  | VOID { Void }
+  | NONE { None }
+  | STRING { String }
 
-vdecl_list:
+ctyp:
+    LIST  { List }
+  | ARRAY { Array }
+
+entry_list_opt:
     /* nothing */    { [] }
-  | vdecl_list vdecl { $2 :: $1 }
+  | entry_list { List.rev $1 }
+
+entry_list:
+    entry { [$1] }
+  | entry_list entry { $2 :: $1 }
+
+entry:
+    vdecl { Vdecl($1) }
+  | vdef  { Vdef($1) }
+  | stmt  { Stmt($1) }
 
 vdecl:
-   typ ID SEMI { ($1, $2) }
+    typ ID SEMI { ($1, $2) }
+
+vdef:
+    typ ID ASSIGN expr SEMI { ($1, $2, $4) }
 
 stmt_list:
-    /* nothing */  { [] }
+    /* nothing */ { [] }
   | stmt_list stmt { $2 :: $1 }
-
 stmt:
     expr SEMI { Expr $1 }
   | RETURN SEMI { Return Noexpr }
@@ -91,6 +111,8 @@ expr:
   | TRUE             { BoolLit(true) }
   | FALSE            { BoolLit(false) }
   | ID               { Id($1) }
+  | LIST LBRACKET actuals_opt RBRACKET { ListC($3) }
+  | ARRAY LBRACKET actuals_opt RBRACKET { ArrayC($3) }
   | expr PLUS   expr { Binop($1, Add,   $3) }
   | expr MINUS  expr { Binop($1, Sub,   $3) }
   | expr TIMES  expr { Binop($1, Mult,  $3) }
@@ -105,7 +127,7 @@ expr:
   | expr OR     expr { Binop($1, Or,    $3) }
   | MINUS expr %prec NEG { Unop(Neg, $2) }
   | NOT expr         { Unop(Not, $2) }
-  | ID ASSIGN expr   { Assign($1, $3) }
+  | ID ASSIGN expr { Assign($1, $3) }
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
   | LPAREN expr RPAREN { $2 }
 

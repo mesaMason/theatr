@@ -19,9 +19,9 @@ void incab()
 
 int main()
 {
-  a = 42;
   b = 21;
   printa();
+  a = 42;
   printb();
   incab();
   printa();

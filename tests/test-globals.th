@@ -1,0 +1,16 @@
+int a;
+a = 0;
+func foo() -> int:
+    return a
+
+int b
+b = 3
+func bar() -> int:
+    return a+b
+
+func main() -> int:
+    int i;
+    i = 2;
+    print(foo());
+    print(bar());
+    return 0;

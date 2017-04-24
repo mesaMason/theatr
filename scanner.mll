@@ -14,7 +14,8 @@ rule token = parse
 | ')'      { RPAREN }
 | '{'      { LBRACE }
 | '}'      { RBRACE }
-
+| '['      { LBRACKET }
+| ']'      { RBRACKET }
 | "->"     { FUNC_ARROW }
 | "func"   { FUNC_DECL }
 | ':'      { COLON }
@@ -41,7 +42,10 @@ rule token = parse
 | "return" { RETURN }
 | "int"    { INT }
 | "bool"   { BOOL }
-| "void"   { VOID }
+| "none"   { NONE }
+| "string" { STRING }
+| "list"   { LIST }
+| "array"    { ARRAY }
 | "true"   { TRUE }
 | "false"  { FALSE }
 | ['0'-'9']+ as lxm { INTLIT(int_of_string lxm) }
