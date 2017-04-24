@@ -1,0 +1,14 @@
+func foo(int a) -> int:
+    return a + 1;
+
+func main() -> int:
+    int val;
+    val = 3;
+    val = foo(val);
+    print(val);
+    int bar;
+    bar = 5;
+    bar = foo(bar);
+    print(bar);
+    int val;
+    return 0

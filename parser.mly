@@ -67,31 +67,27 @@ msg_decl_list:
 structure is very similar to functions
 */
 msg_decl:
-    ID LPAREN formals_opt RPAREN COLON LBRACE vdecl_list stmt_list RBRACE	
+    ID LPAREN formals_opt RPAREN COLON LBRACE stmt_list RBRACE	
       { { mname = $1;
 	  mformals = $3;
-	  mlocals = List.rev $7;
-	  mbody = List.rev $8 } }
+	  mbody = List.rev $7 } }
 	  
 drop:
-      /* nothing */ { { dalocals = []; dabody = [] } }
-    | DROP COLON LBRACE vdecl_list stmt_list RBRACE
-      { { dalocals = List.rev $4;
-	  dabody = List.rev $5 } }
+      /* nothing */ { { dabody = [] } }
+    | DROP COLON LBRACE stmt_list RBRACE
+      { { dabody = List.rev $4 } }
 
 after:
-      /* nothing */ { { dalocals = []; dabody = [] } }
-    | AFTER COLON LBRACE vdecl_list stmt_list RBRACE
-      { { dalocals = List.rev $4;
-	  dabody = List.rev $5 } }
+      /* nothing */ { { dabody = [] } }
+    | AFTER COLON LBRACE stmt_list RBRACE
+      { { dabody = List.rev $4 } }
 
 fdecl:
-   FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE vdecl_list stmt_list RBRACE
+   FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE stmt_list RBRACE
      { { typ = $7;
 	 fname = $2;
 	 formals = $4;
-	 locals = List.rev $10;
-	 body = List.rev $11 } }
+	 body = List.rev $10 } }
 
 formals_opt:
     /* nothing */ { [] }
@@ -119,6 +115,7 @@ stmt_list:
 
 stmt:
     expr SEMI { Expr $1 }
+  | typ ID SEMI   { Vdecl($1, $2) }
   | RETURN SEMI { Return Noexpr }
   | RETURN expr SEMI { Return $2 }
   | LBRACE stmt_list RBRACE { Block(List.rev $2) }

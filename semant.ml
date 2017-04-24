@@ -60,7 +60,7 @@ let check (globals, functions, actors) =
   (* Formats list of different print decls by type *)
   let format_print_decls typ = ("print_" ^ 
     string_of_typ typ,
-    {typ = Void; fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; locals = []; body = []})
+    {typ = Void; fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
   in
 
   let print_typs = List.map format_print_decls [String; Int; Bool] in
@@ -86,19 +86,17 @@ let check (globals, functions, actors) =
     report_duplicate (fun n -> "duplicate formal " ^ n ^ " in " ^ func.fname)
       (List.map snd func.formals);
 
-    List.iter (check_not_void (fun n -> "illegal void local " ^ n ^
-      " in " ^ func.fname)) func.locals;
-
-    report_duplicate (fun n -> "duplicate local " ^ n ^ " in " ^ func.fname)
-      (List.map snd func.locals);
-
-    (* Type of each variable (global, formal, or local *)
-    let symbols = List.fold_left (fun m (t, n) -> StringMap.add n t m)
-	StringMap.empty (globals @ func.formals @ func.locals )
+    (* Type of each variable (global, formal, or local 
+       symbols is a reference, in order to be able to update the StringMap 
+       as you iterate through each statement in the function, to check 
+       that variables are declared before they are used
+     *)
+    let symbols = ref(List.fold_left (fun m (t, n) -> StringMap.add n t m)
+	StringMap.empty (globals @ func.formals ))
     in
 
     let type_of_identifier s =
-      try StringMap.find s symbols
+      try StringMap.find s !symbols
       with Not_found -> raise (Failure ("undeclared identifier " ^ s))
     in
 
@@ -167,6 +165,12 @@ let check (globals, functions, actors) =
          | [] -> ()
         in check_block sl
       | Expr e -> ignore (expr e)
+      (* Vdecl updates symbols via reference to add a variable declaration *)
+      | Vdecl (t, n) ->
+	 if (StringMap.mem n !symbols) then raise (Failure ("local variable " ^ n ^ " already exists"));
+	 symbols := StringMap.add n t !symbols;
+	 check_not_void (fun n -> "illegal void local: " ^ n) (t, n);
+	 ignore((t, n))
       | Return e -> let t = expr e in if t = func.typ then () else
          raise (Failure ("return gives " ^ string_of_typ t ^ " expected " ^
                          string_of_typ func.typ ^ " in " ^ string_of_expr e))
