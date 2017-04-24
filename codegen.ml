@@ -73,13 +73,10 @@ let translate (globals, functions, actors) =
 	ignore (L.build_store p local builder);
 	StringMap.add n local m in
 
-      (*
-      let add_local m (t, n) =
-	let local_var = L.build_alloca (ltype_of_typ t) n builder
-	in StringMap.add n local_var m in
-       *)
       (* make a pass through the function body for variable declarations 
-         and add them to local_vars *)
+         and add them to local_vars. This assumes that semantic checker 
+         has gone through to make sure variables have been declared before 
+         use *)
       let add_local m stmt = match stmt with
 	| A.Vdecl (t, n) ->
 	    let local_var = L.build_alloca (ltype_of_typ t) n builder
@@ -91,7 +88,7 @@ let translate (globals, functions, actors) =
       List.fold_left add_local formals fdecl.A.body in
 
     (* Return the value for a variable or formal argument *)
-    let rec lookup n = try StringMap.find n local_vars
+    let lookup n = try StringMap.find n local_vars
                  with Not_found -> try StringMap.find n global_vars
                  with Not_found -> raise (Failure ("undeclared variable " ^ n))
     in
@@ -163,7 +160,7 @@ let translate (globals, functions, actors) =
     let rec stmt builder = function
 	A.Block sl -> List.fold_left stmt builder sl
       | A.Expr e -> ignore (expr builder e); builder
-      | A.Vdecl v -> ignore (v); builder					      
+      | A.Vdecl v -> ignore (v); builder (* we've already added this to locals *)
       | A.Return e -> ignore (match fdecl.A.typ with
 	  A.Void -> L.build_ret_void builder
 	| _ -> L.build_ret (expr builder e) builder); builder

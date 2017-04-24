@@ -1,13 +1,7 @@
-
-
 func foo(int a) -> int:
     return a + 1;
 
-int global;
-
 func main() -> int:
-    global = 0;
-    global = foo(global);
     int val;
     val = 3;
     val = foo(val);
@@ -16,4 +10,5 @@ func main() -> int:
     bar = 5;
     bar = foo(bar);
     print(bar);
+    int val;
     return 0
