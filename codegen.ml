@@ -127,8 +127,12 @@ let translate (globals, functions, actors) =
       | A.Binop (e1, op, e2) ->
 	    let e1' = expr builder e1
 	    and e2' = expr builder e2 in
+
+        let typ_e1 = L.string_of_lltype(L.type_of e1')
+        and typ_e2 = L.string_of_lltype(L.type_of e2') in
 	    (match op with
-	      A.Add     -> L.build_add
+	      A.Add when typ_e1 = "i32" && typ_e2 = "i32" -> L.build_add
+	    | A.Add when typ_e1 = "double" && typ_e2 = "double" -> L.build_fadd
 	    | A.Sub     -> L.build_sub
 	    | A.Mult    -> L.build_mul
         | A.Div     -> L.build_sdiv
