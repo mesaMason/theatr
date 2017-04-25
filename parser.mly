@@ -10,6 +10,7 @@ open Ast
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
 %token RETURN IF ELSE FOR WHILE INT BOOL VOID
 %token RECEIVE DROP AFTER
+%token NEW ACTOR
 %token <int> INTLIT
 %token <string> STRINGLIT
 %token <string> ID
@@ -101,6 +102,7 @@ typ:
     INT { Int }
   | BOOL { Bool }
   | VOID { Void }
+  | ACTOR { Actor }
 
 vdecl_list:
     /* nothing */    { [] }
@@ -153,6 +155,7 @@ expr:
   | ID ASSIGN expr   { Assign($1, $3) }
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
   | LPAREN expr RPAREN { $2 }
+  | NEW ID LPAREN actuals_opt RPAREN { NewActor($2, $4) }
 
 actuals_opt:
     /* nothing */ { [] }

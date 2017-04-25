@@ -19,6 +19,8 @@ rule token = parse
 | "after"  { AFTER }	   
 | "->"     { FUNC_ARROW }
 | "func"   { FUNC_DECL }
+| "new"    { NEW }
+| "actor"  { ACTOR } 
 | ':'      { COLON }
 | ';'      { SEMI }
 | ','      { COMMA }
