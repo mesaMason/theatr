@@ -171,6 +171,11 @@ let check (globals, functions, actors) =
 	 symbols := StringMap.add n t !symbols;
 	 check_not_void (fun n -> "illegal void local: " ^ n) (t, n);
 	 ignore((t, n))
+      | Vdef vdef ->
+	 if (StringMap.mem vdef.vname !symbols) then raise (Failure ("local variable " ^ vdef.vname ^ " already exists"));
+         symbols := StringMap.add vdef.vname vdef.vtyp !symbols;
+	 check_not_void (fun n -> "illegal void local: " ^ n) (vdef.vtyp, vdef.vname);
+         ignore(vdef)
       | Return e -> let t = expr e in if t = func.typ then () else
          raise (Failure ("return gives " ^ string_of_typ t ^ " expected " ^
                          string_of_typ func.typ ^ " in " ^ string_of_expr e))

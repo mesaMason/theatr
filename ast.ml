@@ -20,10 +20,17 @@ type expr =
   | Call of string * expr list
   | Noexpr
 
+type vdef = {
+    vtyp : typ;
+    vname : string;
+    vvalue : expr;
+  }
+
 type stmt =
     Block of stmt list
   | Expr of expr
   | Vdecl of bind
+  | Vdef of vdef
   | Return of expr
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt

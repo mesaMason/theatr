@@ -1,0 +1,6 @@
+func main() -> int:
+    int a = 3;
+    print(a)
+    int b = 5;
+    print(b)
+    return 0
