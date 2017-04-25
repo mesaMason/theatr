@@ -28,7 +28,8 @@ let translate (globals, functions, actors) =
   let ltype_of_typ = function
       A.Int -> i32_t
     | A.Bool -> i1_t
-    | A.Void -> void_t in
+    | A.Void -> void_t
+    | A.Actor -> i32_t in (* TODO: change this to be a pointer *)
 
   (* Declare each global variable; remember its value in a map *)
   let global_vars =
@@ -149,6 +150,8 @@ let translate (globals, functions, actors) =
 	 let result = (match fdecl.A.typ with A.Void -> ""
                                             | _ -> f ^ "_result") in
          L.build_call fdef (Array.of_list actuals) result builder
+      (* TODO: codegen for actors *)
+      | A.NewActor (a, act) -> L.const_int i32_t 42
     in
 
     (* Invoke "f builder" if the current block doesn't already

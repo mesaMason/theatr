@@ -5,7 +5,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Void | String
+type typ = Int | Bool | Void | String | Actor
 
 type bind = typ * string
 
@@ -18,6 +18,7 @@ type expr =
   | Unop of uop * expr
   | Assign of string * expr
   | Call of string * expr list
+  | NewActor of string * expr list
   | Noexpr
 
 type vdef = {
@@ -96,6 +97,8 @@ let rec string_of_expr = function
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+  | NewActor(a, el) ->
+      a ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
 
 let string_of_typ = function
@@ -103,7 +106,8 @@ let string_of_typ = function
   | String -> "string"
   | Bool -> "bool"
   | Void -> "void"
-
+  | Actor -> "actor"
+               
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
 let rec string_of_stmt = function

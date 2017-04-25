@@ -36,6 +36,14 @@ let check (globals, functions, actors) =
   report_duplicate (fun n -> "duplicate actor " ^ n)
     (List.map (fun an -> an.aname) actors);
 
+  let actor_decls = List.fold_left (fun m ad -> StringMap.add ad.aname ad m)
+                                   StringMap.empty actors
+  in 
+
+  let actor_decl s = try StringMap.find s actor_decls
+        with Not_found -> raise (Failure ("unrecognized actor " ^ s))
+  in 
+
   (**** Checking Global Variables ****)
 
   List.iter (check_not_void (fun n -> "illegal void global " ^ n)) globals;
@@ -149,6 +157,22 @@ let check (globals, functions, actors) =
                 " in " ^ string_of_expr e))))
               fd.formals actuals;
             fd.typ
+
+      (* check actor instantiation with constructor signature of that actor *)
+      | NewActor(aname, actuals) as ex -> let ad = actor_decl aname in
+        if List.length actuals != List.length ad.aformals then 
+          raise (Failure ("expecting " ^ string_of_int (List.length ad.aformals)
+          ^ " arguments in " ^ string_of_expr ex))
+        else
+            List.iter2 (fun (ft, _) e -> let et = expr e in
+                ignore (check_assign ft et
+                (Failure ("illegal actual argument found " ^ 
+                string_of_typ et ^ " expected " ^ string_of_typ ft ^ 
+                " in " ^ string_of_expr e))))
+              ad.aformals actuals;
+            Actor
+
+
     in
 
     let check_bool_expr e = if expr e != Bool
