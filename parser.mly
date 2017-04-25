@@ -10,6 +10,7 @@ open Ast
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
 %token RETURN IF ELSE FOR WHILE INT BOOL NONE STRING
 %token LIST ARRAY
+%token ACTOR RECEIVE DROP AFTER NEW
 %token <int> INTLIT
 %token <string> STRINGLIT
 %token <string> ID
@@ -36,11 +37,12 @@ program:
 
 decls:
    /* nothing */ { [] }
- | decls entry { (Entry($2) :: $1) }
+ | decls stmt { (Stmt($2) :: $1) }
  | decls fdef { (Fdef($2) :: $1) }
+ | decls adef { (Adef($2) :: $1) }
  
 fdef:
-   FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE entry_list_opt RBRACE
+   FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE stmt_list_opt RBRACE
      { { formals = $4;
          rtyp = $7;
 	 fname = $2;
@@ -63,35 +65,24 @@ ptyp:
   | BOOL { Bool }
   | NONE { None }
   | STRING { String }
-
+  | ACTOR { Actor }
+           
 ctyp:
     LIST  { List }
   | ARRAY { Array }
 
-entry_list_opt:
+stmt_list_opt:
     /* nothing */    { [] }
-  | entry_list { List.rev $1 }
-
-entry_list:
-    entry { [$1] }
-  | entry_list entry { $2 :: $1 }
-
-entry:
-    vdecl { Vdecl($1) }
-  | vdef  { Vdef($1) }
-  | stmt  { Stmt($1) }
-
-vdecl:
-    typ ID SEMI { ($1, $2) }
-
-vdef:
-    typ ID ASSIGN expr SEMI { ($1, $2, $4) }
+  | stmt_list { List.rev $1 }
 
 stmt_list:
-    /* nothing */ { [] }
+    stmt { [$1] }
   | stmt_list stmt { $2 :: $1 }
+              
 stmt:
-    expr SEMI { Expr $1 }
+    expr SEMI { Expr($1) }
+  | vdecl { Vdecl($1) }
+  | vdef  { Vdef($1) }
   | RETURN SEMI { Return Noexpr }
   | RETURN expr SEMI { Return $2 }
   | LBRACE stmt_list RBRACE { Block(List.rev $2) }
@@ -100,6 +91,16 @@ stmt:
   | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN COLON stmt
      { For($3, $5, $7, $10) }
   | WHILE LPAREN expr RPAREN COLON stmt { While($3, $6) }
+
+vdecl_list:
+    /* nothing */    { [] }
+  | vdecl_list vdecl { $2 :: $1 }
+
+vdecl:
+    typ ID SEMI { ($1, $2) }
+
+vdef:
+    typ ID ASSIGN expr SEMI { ($1, $2, $4) }
 
 expr_opt:
     /* nothing */ { Noexpr }
@@ -129,6 +130,7 @@ expr:
   | NOT expr         { Unop(Not, $2) }
   | ID ASSIGN expr { Assign($1, $3) }
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
+  | NEW ID LPAREN actuals_opt RPAREN { Acall($2, $4) }
   | LPAREN expr RPAREN { $2 }
 
 actuals_opt:
@@ -138,3 +140,39 @@ actuals_opt:
 actuals_list:
     expr                    { [$1] }
   | actuals_list COMMA expr { $3 :: $1 }
+
+adef:
+   ID LPAREN formals_opt RPAREN COLON LBRACE vdecl_list receives drop after RBRACE
+     { { aname = $1;
+	 aformals = $3;
+	 alocals = List.rev $7;
+	 receives = $8;
+	 drop = $9;
+	 after = $10; } }
+
+receives:
+    /* nothing */ { [] }
+  | RECEIVE COLON LBRACE msg_decl_list RBRACE { List.rev $4 }
+     
+msg_decl_list:
+    /* nothing */ { [] }
+  | msg_decl_list msg_decl { $2 :: $1 }		  
+
+/* declaration of what an actor does upon receiving the message
+structure is very similar to functions
+*/
+msg_decl:
+    ID LPAREN formals_opt RPAREN COLON LBRACE stmt_list RBRACE	
+      { { mname = $1;
+	  mformals = $3;
+	  mbody = List.rev $7 } }
+	  
+drop:
+      /* nothing */ { { dabody = [] } }
+    | DROP COLON LBRACE stmt_list RBRACE
+      { { dabody = List.rev $4 } }
+
+after:
+      /* nothing */ { { dabody = [] } }
+    | AFTER COLON LBRACE stmt_list RBRACE
+      { { dabody = List.rev $4 } }

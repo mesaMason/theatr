@@ -2,6 +2,7 @@ _build/
 microc.native
 testall.log
 theatr.native
+print_ast
 *~
 *.temp
 *.diff
@@ -19,6 +20,10 @@ tramp
 scannerprint.ml
 scanner.ml
 scannerprint.ml
+parser.ml
+*.cmi
+*.cmo
+*.mli
 # Org-mode
 .org-id-locations
 *_archive

@@ -46,6 +46,11 @@ rule token = parse
 | "string" { STRING }
 | "list"   { LIST }
 | "array"    { ARRAY }
+| "new"    { NEW }
+| "actor"  { ACTOR }
+| "receive" { RECEIVE }
+| "drop"    { DROP}
+| "after"   { AFTER }
 | "true"   { TRUE }
 | "false"  { FALSE }
 | ['0'-'9']+ as lxm { INTLIT(int_of_string lxm) }
