@@ -7,6 +7,8 @@ func main() -> int:
     print(f);
     f = -.9 + .1;
     print(f);
+    f = -.9 - .01;
+    print(f);
     print(2 - 5);
     print(3 * 5);
     print(4 / 5);
