@@ -81,6 +81,9 @@ let translate (globals, functions, actors) =
 	| A.Vdecl (t, n) ->
 	    let local_var = L.build_alloca (ltype_of_typ t) n builder
 	    in StringMap.add n local_var m
+        | A.Vdef v ->
+	    let local_var = L.build_alloca (ltype_of_typ v.A.vtyp) v.A.vname builder
+	    in StringMap.add v.A.vname local_var m           
         | _ -> m
       in
       let formals = List.fold_left2 add_formal StringMap.empty fdecl.A.formals
@@ -161,6 +164,7 @@ let translate (globals, functions, actors) =
 	A.Block sl -> List.fold_left stmt builder sl
       | A.Expr e -> ignore (expr builder e); builder
       | A.Vdecl v -> ignore (v); builder (* we've already added this to locals *)
+      | A.Vdef v -> ignore (expr builder v.A.vvalue); builder
       | A.Return e -> ignore (match fdecl.A.typ with
 	  A.Void -> L.build_ret_void builder
 	| _ -> L.build_ret (expr builder e) builder); builder

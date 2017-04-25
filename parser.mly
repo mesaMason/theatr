@@ -116,6 +116,7 @@ stmt_list:
 stmt:
     expr SEMI { Expr $1 }
   | typ ID SEMI   { Vdecl($1, $2) }
+  | typ ID ASSIGN expr SEMI { Vdef({ vtyp = $1; vname = $2; vvalue = Assign($2, $4) }) }
   | RETURN SEMI { Return Noexpr }
   | RETURN expr SEMI { Return $2 }
   | LBRACE stmt_list RBRACE { Block(List.rev $2) }
