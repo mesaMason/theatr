@@ -213,12 +213,15 @@ let translate (globals, functions, actors) =
           *)  
             | A.And     -> L.build_and
             | A.Or      -> L.build_or
+           (*
             | A.Equal   -> L.build_icmp L.Icmp.Eq
             | A.Neq     -> L.build_icmp L.Icmp.Ne
             | A.Less    -> L.build_icmp L.Icmp.Slt
             | A.Leq     -> L.build_icmp L.Icmp.Sle
             | A.Greater -> L.build_icmp L.Icmp.Sgt
             | A.Geq     -> L.build_icmp L.Icmp.Sge
+          *)
+            | A.Equal | A.Neq | A.Less | A.Leq | A.Greater | A.Geq  -> handle_comp_binop op typ_e1 typ_e2
           ) e1' e2' "tmp" builder
       | A.Unop(op, e) ->
       let e' = expr builder e in
