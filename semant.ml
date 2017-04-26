@@ -68,7 +68,7 @@ let check (globals, functions, actors) =
   (* Formats list of different print decls by type *)
   let format_print_decls typ = ("print:" ^ 
     string_of_typ typ,
-    {typ = Void; fname = "print:" ^ string_of_typ typ; formals = [(typ, "x")]; locals = []; body = []})
+    {typ = Void; fname = "print:" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
   in
 
   let print_typs = List.map format_print_decls [String; Int; Bool] in
