@@ -1,0 +1,4 @@
+Hello from inside calculator thread. My count is
+5
+Hello from inside greeter thread
+Hello from inside goodbye thread

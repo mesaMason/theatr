@@ -31,6 +31,13 @@ let check (globals, functions, actors) =
   let check_assign lvaluet rvaluet err =
      if lvaluet == rvaluet then lvaluet else raise err
   in
+  
+  (* Dynamically adds to MapString using list of tuples *)
+  let rec add_to_map m li =
+    match li with
+    | [] -> m
+    | hd :: tl -> add_to_map (StringMap.add (fst hd) (snd hd) m) tl
+  in
 
   (**** Checking Actors ****)
   report_duplicate (fun n -> "duplicate actor " ^ n)
@@ -58,24 +65,16 @@ let check (globals, functions, actors) =
   report_duplicate (fun n -> "duplicate function " ^ n)
     (List.map (fun fd -> fd.fname) functions);
  
-  (* Dynamically adds to MapString using list of tuples *)
-  let rec add_to_map m li =
-    match li with
-    | [] -> m
-    | hd :: tl -> add_to_map (StringMap.add (fst hd) (snd hd) m) tl
-  in
-
   (* Formats list of different print decls by type *)
-  let format_print_decls typ = ("print_" ^ 
+  let format_print_decls typ = ("print:" ^ 
     string_of_typ typ,
-    {typ = Void; fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
+    {typ = Void; fname = "print:" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
   in
 
   let print_typs = List.map format_print_decls [String; Int; Bool] in
+  let built_in_decls = add_to_map StringMap.empty print_typs in
   
   (* Function declarations for named functions  *)
-  let built_in_decls = add_to_map StringMap.empty print_typs in
-
   let function_decls = List.fold_left (fun m fd -> StringMap.add fd.fname fd m)
                           built_in_decls functions
   in
@@ -136,10 +135,18 @@ let check (globals, functions, actors) =
         check_assign (type_of_identifier var) (expr e)
             (Failure ("illegal assignment " ^ string_of_typ lt ^ 
             " = " ^ string_of_typ rt ^ " in " ^ string_of_expr ex))
+      | Call("pthread_create", actuals) ->
+        if List.length actuals > 0 then
+            let fname = List.hd actuals in
+            let new_call = Call(string_of_expr fname, List.tl actuals) in
+            expr new_call
+        else 
+            raise(Failure("expecting at least one argument in pthread_create(): fname, func_arguments"))
+
       | Call("print", actuals) as call ->
         if List.length actuals == 1 then
             let et = expr (List.hd actuals) in
-            let fd = function_decl ("print_" ^ string_of_typ et) in
+            let fd = function_decl ("print:" ^ string_of_typ et) in
             fd.typ
         else
             raise (Failure ("expecting 1 arguments in " ^ 

@@ -11,7 +11,6 @@ http://llvm.moe/
 http://llvm.moe/ocaml/
 
 *)
-
 module L = Llvm
 module A = Ast
 
@@ -42,6 +41,21 @@ let translate (globals, functions, actors) =
   let printf_t = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
 
+  (* Declare pthread_create() and pthread_join(), which will be called to spawn actors *)
+  let pthread_t = i32_t 
+  and func_void_ptr_void_ptr = L.function_type (L.pointer_type i8_t) [| L.pointer_type i8_t |] 
+  in
+
+  let pthread_create_t_arr = [|L.pointer_type i32_t ; L.pointer_type i8_t; 
+    L.pointer_type func_void_ptr_void_ptr ; L.pointer_type i8_t |]
+  in
+  let pthread_create_t = L.function_type i32_t pthread_create_t_arr in
+  let pthread_create_func = L.declare_function "pthread_create" pthread_create_t the_module in
+
+  let pthread_join_arr = [| pthread_t ; L.pointer_type (L.pointer_type i8_t) |] in
+  let pthread_join_t = L.function_type i32_t pthread_join_arr in
+  let pthread_join_func = L.declare_function "pthread_join" pthread_join_t the_module in
+
   (* Define each function (arguments and return type) so we can call it *)
   let function_decls =
     let function_decl m fdecl =
@@ -56,7 +70,7 @@ let translate (globals, functions, actors) =
   let build_function_body fdecl =
     let (the_function, _) = StringMap.find fdecl.A.fname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-    
+
     let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder in
     let format_str_str s = L.build_global_stringptr (s^"\n") "fmt" builder in
 
@@ -97,7 +111,7 @@ let translate (globals, functions, actors) =
                  with Not_found -> raise (Failure ("undeclared variable " ^ n))
     in
 
-    (* Construct code for an expression; return its value *)
+   (* Construct code for an expression; return its value *)
     let rec expr builder = function
     	A.IntLit i -> L.const_int i32_t i
       | A.StringLit s -> format_str_str s
@@ -128,6 +142,30 @@ let translate (globals, functions, actors) =
           | A.Not     -> L.build_not) e' "tmp" builder
       | A.Assign (s, e) -> let e' = expr builder e in
 	                   ignore (L.build_store e' (lookup s) builder); e'
+      | A.Call("pthread_create", actuals) ->
+        let f = (match (List.hd actuals) with 
+                    A.Id s -> s
+                  | _ -> raise(Failure ("expected valid func id for pthread()"))) in 
+        
+        let act = (match List.length actuals with
+                    1 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) 
+                  | 2 -> L.const_inttoptr (expr builder (List.nth actuals 1)) (L.pointer_type i8_t) 
+                  | _ -> raise(Failure ("invalid number of arguments for pthread_create()"))) in 
+        
+        let (fdef, _) = StringMap.find f function_decls in 
+        let pthread_pt = L.build_alloca i32_t "tid" builder in  
+        let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
+        let func = L.const_bitcast fdef (L.pointer_type (L.function_type (L.pointer_type i8_t) 
+                    [|L.pointer_type i8_t|])) in
+        
+        let args = [| pthread_pt ; attr ; func ; act |] in 
+        let _ = L.build_call pthread_create_func args "pthread_create_result" builder in
+
+        let join_attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type (L.pointer_type i8_t)) in
+        let pthread_pt_pid = L.build_load pthread_pt "tid" builder in
+
+        L.build_call pthread_join_func [| pthread_pt_pid ; join_attr|] "pthread_join_result" builder
+
       | A.Call ("print", [e]) -> 
         let e1 = expr builder e in
         let typ_e = L.string_of_lltype (L.type_of e1) in
@@ -146,8 +184,8 @@ let translate (globals, functions, actors) =
             L.build_call printf_func [| format_typ_str; e1 |] "printf" builder
       | A.Call (f, act) ->
          let (fdef, fdecl) = StringMap.find f function_decls in
-	 let actuals = List.rev (List.map (expr builder) (List.rev act)) in
-	 let result = (match fdecl.A.typ with A.Void -> ""
+	     let actuals = List.rev (List.map (expr builder) (List.rev act)) in
+	     let result = (match fdecl.A.typ with A.Void -> ""
                                             | _ -> f ^ "_result") in
          L.build_call fdef (Array.of_list actuals) result builder
       (* TODO: codegen for actors *)
@@ -204,7 +242,7 @@ let translate (globals, functions, actors) =
       | A.For (e1, e2, e3, body) -> stmt builder
 	    ( A.Block [A.Expr e1 ; A.While (e2, A.Block [body ; A.Expr e3]) ] )
     in
-
+    
     (* Build the code for each statement in the function *)
     let builder = stmt builder (A.Block fdecl.A.body) in
 
@@ -213,6 +251,6 @@ let translate (globals, functions, actors) =
         A.Void -> L.build_ret_void
       | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
   in
-
+  
   List.iter build_function_body functions;
   the_module
