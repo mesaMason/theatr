@@ -1,0 +1,19 @@
+greeter(int count):
+    bool is_available
+    receive:
+        change_availability(bool a):
+            is_available = a
+        say_hi(int i):
+            count = count + i
+            if(is_available):
+                print("Hello, my count is:")
+                print(count)
+    drop:
+        count = count + 1
+        return
+    after:
+        int time
+
+func main() -> int:
+    actor g
+    return 0

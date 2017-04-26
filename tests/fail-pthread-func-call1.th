@@ -1,0 +1,7 @@
+func greeter() -> void:
+    print("Hello from inside the thread")
+
+func main() -> int:
+    pthread_create(greeter)
+    pthread_create(hello)
+    return 0
