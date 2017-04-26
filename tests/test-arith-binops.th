@@ -1,0 +1,15 @@
+func main() -> int:
+    double f;
+    print(1 + 1);
+    f = 0.5 + 0.5;
+    print(f);
+    f = .0 + 0.1;
+    print(f);
+    f = -.9 + .1;
+    print(f);
+    f = -.9 - .01;
+    print(f);
+    print(2 - 5);
+    print(3 * 5);
+    print(4 / 5);
+    return 0;

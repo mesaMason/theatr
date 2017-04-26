@@ -4,6 +4,7 @@
 
 let letter = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']
+let double = ('-'?)((digit+'.'digit*) | ('.'digit+))
 let punct = [' '-'!' '#'-'[' ']'-'~']
 let str = (letter | digit | punct)* as s
 
@@ -44,11 +45,13 @@ rule token = parse
 | "while"  { WHILE }
 | "return" { RETURN }
 | "int"    { INT }
+| "double" { DOUBLE }
 | "bool"   { BOOL }
 | "void"   { VOID }
 | "true"   { TRUE }
 | "false"  { FALSE }
 | ['0'-'9']+ as lxm { INTLIT(int_of_string lxm) }
+| double as lxm { DOUBLELIT(float_of_string lxm) }
 | '"' str '"' { STRINGLIT(s) }
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 | eof { EOF }

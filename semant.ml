@@ -71,7 +71,7 @@ let check (globals, functions, actors) =
     {typ = Void; fname = "print:" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
   in
 
-  let print_typs = List.map format_print_decls [String; Int; Bool] in
+  let print_typs = List.map format_print_decls [String; Int; Double; Bool] in
   let built_in_decls = add_to_map StringMap.empty print_typs in
   
   (* Function declarations for named functions  *)
@@ -110,18 +110,23 @@ let check (globals, functions, actors) =
     (* Return the type of an expression or throw an exception *)
     let rec expr = function
     	IntLit _ -> Int
+      | DoubleLit _ -> Double  
       | StringLit _ -> String
       | BoolLit _ -> Bool
       | Id s -> type_of_identifier s
       | Binop(e1, op, e2) as e -> let t1 = expr e1 and t2 = expr e2 in
 	(match op with
           Add | Sub | Mult | Div when t1 = Int && t2 = Int -> Int
+        | Add | Sub | Mult | Div when t1 = Double && t2 = Double -> Double
 	| Equal | Neq when t1 = t2 -> Bool
 	| Less | Leq | Greater | Geq when t1 = Int && t2 = Int -> Bool
+    | Less | Leq | Greater | Geq when t1 = Double && t2 = Double -> Bool
 	| And | Or when t1 = Bool && t2 = Bool -> Bool
         | _ -> raise (Failure ("illegal binary operator " ^
               string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
-              string_of_typ t2 ^ " in " ^ string_of_expr e))
+              string_of_typ t2 ^ " in " ^ string_of_expr e
+              ^ ". e1: " ^ string_of_expr e1 ^ "e2: " ^ string_of_expr e2
+              ))
         )
       | Unop(op, e) as ex -> let t = expr e in
 	 (match op with
