@@ -132,6 +132,7 @@ let string_of_typ = function
   | String -> "string"
   | Bool -> "bool"
   | Void -> "void"
+  | Actor -> "actor"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
