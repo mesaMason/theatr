@@ -6,6 +6,20 @@ func main() -> int:
     print(f);
     f = -.9 + 0.1;
     print(f);
+    
     f = -.9 - .01;
-    print(f);
+    print(f);    
+    print(0.0 - 1.5);
+    
+    f = 4.0
+    double d;
+    d = f * 5.0
+    print(d);
+    print(5.0 * f);
+    print(5.0 * -.2);
+
+    print(4.2 / 1.0);
+    print(1.0 / 3.0);
+    print(4.0 / -1.0);
+
     return 0;
