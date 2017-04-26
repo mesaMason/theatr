@@ -110,56 +110,72 @@ let translate (globals, functions, actors) =
     let lookup n = try StringMap.find n local_vars
                  with Not_found -> try StringMap.find n global_vars
                  with Not_found -> raise (Failure ("undeclared variable " ^ n))
-(*    in
-*)
-
-(*    and buid_arith_for_binop op typ1 typ2 =
-        match typ1 with
-      | "double" when  
-*)
     in
-    let addition_handler typ1 typ2 =
-        match typ1 with
-      | "double" when typ2 = typ1 -> L.build_fadd
-      | "i32" when typ2 = typ1 -> L.build_add
+    
+    let handle_addition typ =
+        match typ with
+      | "double"    -> L.build_fadd
+      | "i32"       -> L.build_add
     in
-    let subtraction_handler typ1 typ2 =
-        match typ1 with
-      | "double" -> L.build_fsub
-      | "i32" -> L.build_sub
+   
+    let handle_subtraction typ =
+        match typ with
+      | "double"    -> L.build_fsub
+      | "i32"       -> L.build_sub
     in
 
+    let handle_mult typ = 
+        match typ with
+      | "double"    -> L.build_fmul
+      | "i32"       -> L.build_mul
+    in
+    
+    let handle_div typ = 
+        match typ with
+      | "double"    -> L.build_fdiv
+      | "i32"       -> L.build_sdiv
+    in  
+
+    let handle_arith_binop op typ1 typ2 =
+        match typ1 with 
+        | typ2  -> (
+            match op with
+          | A.Add   -> handle_addition typ1
+          | A.Sub   -> handle_subtraction typ1
+          | A.Mult  -> handle_mult typ1
+          | A.Div   -> handle_div typ1
+          )
+        | _     -> raise (Failure("incompatible types passed to arithmetic operation: " ^typ1 ^typ2))    
+    in
+    
     (* Construct code for an expression; return its value *)
     let rec expr builder = function
-      A.IntLit i -> L.const_int i32_t i
+        A.IntLit i -> L.const_int i32_t i
       | A.DoubleLit f -> L.const_float d_t f
       | A.StringLit s -> format_str_str s
       | A.BoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | A.Noexpr -> L.const_int i32_t 0
       | A.Id s -> L.build_load (lookup s) s builder
       | A.Binop (e1, op, e2) ->
-      let e1' = expr builder e1
-      and e2' = expr builder e2 in
+        let e1' = expr builder e1
+        and e2' = expr builder e2 in
 
         let typ_e1 = L.string_of_lltype(L.type_of e1')
         and typ_e2 = L.string_of_lltype(L.type_of e2') in
-      (match op with
-(*        A.Add when typ_e1 = "i32" && typ_e2 = "i32" -> L.build_add
-      | A.Add when typ_e1 = "double" && typ_e2 = "double" -> L.build_fadd
-*)
-      | A.Add     -> addition_handler typ_e1 typ_e2
-      | A.Sub     -> subtraction_handler typ_e1 typ_e2
-      | A.Mult    -> L.build_mul
-        | A.Div     -> L.build_sdiv
-      | A.And     -> L.build_and
-      | A.Or      -> L.build_or
-      | A.Equal   -> L.build_icmp L.Icmp.Eq
-      | A.Neq     -> L.build_icmp L.Icmp.Ne
-      | A.Less    -> L.build_icmp L.Icmp.Slt
-      | A.Leq     -> L.build_icmp L.Icmp.Sle
-      | A.Greater -> L.build_icmp L.Icmp.Sgt
-      | A.Geq     -> L.build_icmp L.Icmp.Sge
-      ) e1' e2' "tmp" builder
+          (match op with
+            | A.Add | A.Sub | A.Mult | A.Div   -> handle_arith_binop op typ_e1 typ_e2
+           (* | A.Mult    -> L.build_mul
+            | A.Div     -> L.build_sdiv
+          *)  
+            | A.And     -> L.build_and
+            | A.Or      -> L.build_or
+            | A.Equal   -> L.build_icmp L.Icmp.Eq
+            | A.Neq     -> L.build_icmp L.Icmp.Ne
+            | A.Less    -> L.build_icmp L.Icmp.Slt
+            | A.Leq     -> L.build_icmp L.Icmp.Sle
+            | A.Greater -> L.build_icmp L.Icmp.Sgt
+            | A.Geq     -> L.build_icmp L.Icmp.Sge
+          ) e1' e2' "tmp" builder
       | A.Unop(op, e) ->
       let e' = expr builder e in
       (match op with
