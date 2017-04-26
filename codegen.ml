@@ -155,7 +155,51 @@ let translate (globals, functions, actors) =
           )
         | _     -> raise (Failure("incompatible types passed to arithmetic operation: " ^typ1 ^typ2))    
     in
-    
+   
+    let handle_equal typ =
+        match typ with 
+      | "double"    -> L.build_fcmp L.Fcmp.Oeq
+      | "i32"       -> L.build_icmp L.Icmp.Eq
+    in
+    let handle_neq typ =
+        match typ with 
+      | "double"    -> L.build_fcmp L.Fcmp.One
+      | "i32"    -> L.build_icmp L.Icmp.Ne
+    in
+    let handle_less typ =
+        match typ with
+      | "double"    -> L.build_fcmp L.Fcmp.Olt
+      | "i32"    -> L.build_icmp L.Icmp.Slt
+    in
+    let handle_leq typ =
+        match typ with
+      | "double"    -> L.build_fcmp L.Fcmp.Ole
+      | "i32"    -> L.build_icmp L.Icmp.Sle
+    in
+    let handle_greater typ =
+        match typ with
+      | "double"    -> L.build_fcmp L.Fcmp.Ogt
+      | "i32"    -> L.build_icmp L.Icmp.Sgt
+    in
+    let handle_geq typ =
+        match typ with
+      | "double"    -> L.build_fcmp L.Fcmp.Oge
+      | "i32"    -> L.build_icmp L.Icmp.Sge
+    in
+    let handle_comp_binop op typ1 typ2 =
+        match typ1 with
+        | typ2 -> (
+            match op with
+          | A.Equal     -> handle_equal typ1
+          | A.Neq       -> handle_neq typ1 
+          | A.Less      -> handle_less typ1
+          | A.Leq       -> handle_leq typ1
+          | A.Greater   -> handle_greater typ1
+          | A.Geq       -> handle_geq typ1
+          )
+        | _             -> raise (Failure("incompatible types passed to comparison operation: " ^typ1 ^typ2))
+    in
+      
     (* Construct code for an expression; return its value *)
     let rec expr builder = function
         A.IntLit i -> L.const_int i32_t i
