@@ -130,10 +130,13 @@ let check (globals, functions, actors) =
 	    | Add | Sub | Mult | Div when t1 = Ptyp(Double) && t2 = Ptyp(Double) -> Ptyp(Double)
     | Equal | Neq when t1 = t2 -> Ptyp(Bool)
 	| Less | Leq | Greater | Geq when t1 = Ptyp(Int) && t2 = Ptyp(Int) -> Ptyp(Bool)
+    | Less | Leq | Greater | Geq when t1 = Ptyp(Double) && t2 = Ptyp(Double) -> Ptyp(Bool)
 	| And | Or when t1 = Ptyp(Bool) && t2 = Ptyp(Bool) -> Ptyp(Bool)
         | _ -> raise (Failure ("illegal binary operator " ^
               string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
-              string_of_typ t2 ^ " in " ^ string_of_expr e))
+              string_of_typ t2 ^ " in " ^ string_of_expr e
+              ^ ". e1: " ^ string_of_expr e1 ^ "e2: " ^ string_of_expr e2
+              ))
         )
       | Unop(op, e) as ex -> let t = expr e in
 	 (match op with

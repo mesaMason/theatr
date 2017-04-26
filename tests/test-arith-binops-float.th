@@ -1,5 +1,5 @@
 func main() -> int:
-    double f;
+    double f
     f = 0.5 + 0.5;
     print(f);
     f = .0 + 0.1;
