@@ -21,9 +21,16 @@ clean :
 # More detailed: build using ocamlc/ocamlopt + ocamlfind to locate LLVM
 
 OBJS = ast.cmx codegen.cmx parser.cmx scanner.cmx semant.cmx theatr.cmx
+POBJS = scanner.cmo parser.cmo ast.cmo print_ast.cmo
 
 theatr : $(OBJS)
 	ocamlfind ocamlopt -linkpkg -package llvm -package llvm.analysis $(OBJS) -o theatr
+
+print_ast : $(POBJS)
+	ocamlc -o print_ast $(POBJS)
+
+clean_ast :
+	rm -f print_ast parser.ml parser.mli scanner.ml *.cmo *.cmi
 
 scanner.ml : scanner.mll
 	ocamllex scanner.mll

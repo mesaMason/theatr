@@ -22,14 +22,14 @@ let check (globals, functions, actors) =
 
   (* Raise an exception if a given binding is to a void type *)
   let check_not_void exceptf = function
-      (Void, n) -> raise (Failure (exceptf n))
+      (Ptyp(Void), n) -> raise (Failure (exceptf n))
     | _ -> ()
   in
   
   (* Raise an exception of the given rvalue type cannot be assigned to
      the given lvalue type *)
   let check_assign lvaluet rvaluet err =
-     if lvaluet == rvaluet then lvaluet else raise err
+     if lvaluet = rvaluet then lvaluet else raise err
   in
   
   (* Dynamically adds to MapString using list of tuples *)
@@ -68,10 +68,10 @@ let check (globals, functions, actors) =
   (* Formats list of different print decls by type *)
   let format_print_decls typ = ("print:" ^ 
     string_of_typ typ,
-    {typ = Void; fname = "print:" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
+    {typ = Ptyp(Void); fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
   in
 
-  let print_typs = List.map format_print_decls [String; Int; Bool] in
+  let print_typs = List.map format_print_decls [Ptyp(String); Ptyp(Int); Ptyp(Bool)] in
   let built_in_decls = add_to_map StringMap.empty print_typs in
   
   (* Function declarations for named functions  *)
@@ -109,27 +109,37 @@ let check (globals, functions, actors) =
 
     (* Return the type of an expression or throw an exception *)
     let rec expr = function
-    	IntLit _ -> Int
-      | StringLit _ -> String
-      | BoolLit _ -> Bool
+    	IntLit _ -> Ptyp(Int)
+      | StringLit _ -> Ptyp(String)
+      | BoolLit _ -> Ptyp(Bool)
       | Id s -> type_of_identifier s
+      | ListC el -> (match el with
+                       [] -> Ptyp(Void)
+                     | [e] -> expr e
+                     | hd :: tl -> let et = expr hd
+                                   in List.fold_left (fun a b -> if a = (expr b) then a else raise (Failure("list contains different types of entries"))) et tl)
+      | ArrayC el -> (match el with
+                       [] -> Ptyp(Void)
+                     | [e] -> expr e
+                     | hd :: tl -> let et = expr hd
+                                   in List.fold_left (fun a b -> if a = (expr b) then a else raise (Failure("array contains different types of entries"))) et tl)
       | Binop(e1, op, e2) as e -> let t1 = expr e1 and t2 = expr e2 in
 	(match op with
-          Add | Sub | Mult | Div when t1 = Int && t2 = Int -> Int
-	| Equal | Neq when t1 = t2 -> Bool
-	| Less | Leq | Greater | Geq when t1 = Int && t2 = Int -> Bool
-	| And | Or when t1 = Bool && t2 = Bool -> Bool
+          Add | Sub | Mult | Div when t1 = Ptyp(Int) && t2 = Ptyp(Int) -> Ptyp(Int)
+	| Equal | Neq when t1 = t2 -> Ptyp(Bool)
+	| Less | Leq | Greater | Geq when t1 = Ptyp(Int) && t2 = Ptyp(Int) -> Ptyp(Bool)
+	| And | Or when t1 = Ptyp(Bool) && t2 = Ptyp(Bool) -> Ptyp(Bool)
         | _ -> raise (Failure ("illegal binary operator " ^
               string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
               string_of_typ t2 ^ " in " ^ string_of_expr e))
         )
       | Unop(op, e) as ex -> let t = expr e in
 	 (match op with
-	   Neg when t = Int -> Int
-	 | Not when t = Bool -> Bool
+	   Neg when t = Ptyp(Int) -> Ptyp(Int)
+	 | Not when t = Ptyp(Bool) -> Ptyp(Bool)
          | _ -> raise (Failure ("illegal unary operator " ^ string_of_uop op ^
 	  		   string_of_typ t ^ " in " ^ string_of_expr ex)))
-      | Noexpr -> Void
+      | Noexpr -> Ptyp(Void)
       | Assign(var, e) as ex -> let lt = type_of_identifier var
                                 and rt = expr e in
         check_assign (type_of_identifier var) (expr e)
@@ -177,12 +187,12 @@ let check (globals, functions, actors) =
                 string_of_typ et ^ " expected " ^ string_of_typ ft ^ 
                 " in " ^ string_of_expr e))))
               ad.aformals actuals;
-            Actor
+            Ptyp(Actor)
 
 
     in
 
-    let check_bool_expr e = if expr e != Bool
+    let check_bool_expr e = if expr e <> Ptyp(Bool)
      then raise (Failure ("expected Boolean expression in " ^ string_of_expr e))
      else () in
 

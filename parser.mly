@@ -4,13 +4,14 @@
 open Ast
 %}
 
-%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA COLON
+%token SEMI LPAREN RPAREN LBRACE RBRACE COMMA COLON LBRACKET RBRACKET
 %token FUNC_DECL FUNC_ARROW
 %token PLUS MINUS TIMES DIVIDE ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
 %token RETURN IF ELSE FOR WHILE INT BOOL VOID
 %token RECEIVE DROP AFTER
 %token NEW ACTOR
+%token LIST ARRAY
 %token <int> INTLIT
 %token <string> STRINGLIT
 %token <string> ID
@@ -45,7 +46,7 @@ decls:
 LBRACE and RBRACE: these will be inserted by the preprocessor
 formals_opt and vdecl_list act the same as in fdecl
 receives is a msg_decl list
-drop and after are stmt lists
+rop and after are stmt lists
 */
 adecl:
    ID LPAREN formals_opt RPAREN COLON LBRACE vdecl_list receives drop after RBRACE
@@ -98,11 +99,19 @@ formal_list:
     typ ID                   { [($1,$2)] }
   | formal_list COMMA typ ID { ($3,$4) :: $1 }
 
-typ:
+ptyp:
     INT { Int }
   | BOOL { Bool }
   | VOID { Void }
   | ACTOR { Actor }
+
+ctyp:
+    LIST { List }
+  | ARRAY { Array }
+
+typ:
+    ptyp { Ptyp($1) }
+  | ctyp LT ptyp GT { Ctyp($1, $3) }
 
 vdecl_list:
     /* nothing */    { [] }
@@ -138,6 +147,8 @@ expr:
   | TRUE             { BoolLit(true) }
   | FALSE            { BoolLit(false) }
   | ID               { Id($1) }
+  | LIST LBRACKET actuals_opt RBRACKET { ListC($3) }
+  | ARRAY LBRACKET actuals_opt RBRACKET { ArrayC($3) }
   | expr PLUS   expr { Binop($1, Add,   $3) }
   | expr MINUS  expr { Binop($1, Sub,   $3) }
   | expr TIMES  expr { Binop($1, Mult,  $3) }

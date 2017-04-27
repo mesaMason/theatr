@@ -24,11 +24,19 @@ let translate (globals, functions, actors) =
   and i1_t   = L.i1_type   context
   and void_t = L.void_type context in
 
-  let ltype_of_typ = function
+  let ltype_of_ptyp = function
       A.Int -> i32_t
     | A.Bool -> i1_t
     | A.Void -> void_t
+    | A.String -> i32_t
     | A.Actor -> i32_t in (* TODO: change this to be a pointer *)
+
+  let ltype_of_ctyp = function
+      _ -> i32_t in
+  
+  let ltype_of_typ = function
+      A.Ptyp p -> ltype_of_ptyp p
+    | A.Ctyp (c, p) -> ltype_of_ctyp (c, p) in
 
   (* Declare each global variable; remember its value in a map *)
   let global_vars =
@@ -185,7 +193,7 @@ let translate (globals, functions, actors) =
       | A.Call (f, act) ->
          let (fdef, fdecl) = StringMap.find f function_decls in
 	     let actuals = List.rev (List.map (expr builder) (List.rev act)) in
-	     let result = (match fdecl.A.typ with A.Void -> ""
+	     let result = (match fdecl.A.typ with A.Ptyp(Void) -> ""
                                             | _ -> f ^ "_result") in
          L.build_call fdef (Array.of_list actuals) result builder
       (* TODO: codegen for actors *)
@@ -207,7 +215,7 @@ let translate (globals, functions, actors) =
       | A.Vdecl v -> ignore (v); builder (* we've already added this to locals *)
       | A.Vdef v -> ignore (expr builder v.A.vvalue); builder
       | A.Return e -> ignore (match fdecl.A.typ with
-	  A.Void -> L.build_ret_void builder
+	  A.Ptyp(Void) -> L.build_ret_void builder
 	| _ -> L.build_ret (expr builder e) builder); builder
       | A.If (predicate, then_stmt, else_stmt) ->
          let bool_val = expr builder predicate in
@@ -248,7 +256,7 @@ let translate (globals, functions, actors) =
 
     (* Add a return if the last block falls off the end *)
     add_terminal builder (match fdecl.A.typ with
-        A.Void -> L.build_ret_void
+        A.Ptyp(Void) -> L.build_ret_void
       | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
   in
   

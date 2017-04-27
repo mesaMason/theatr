@@ -41,6 +41,8 @@ rule token = parse
 | "if"     { IF }
 | "else"   { ELSE }
 | "for"    { FOR }
+| "list"   { LIST }
+| "array"  { ARRAY }
 | "while"  { WHILE }
 | "return" { RETURN }
 | "int"    { INT }

@@ -5,14 +5,20 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Void | String | Actor
+type ptyp = Int | Bool | Void | String | Actor
 
+type ctyp = List | Array
+
+type typ = Ptyp of ptyp | Ctyp of ctyp * ptyp
+  
 type bind = typ * string
 
 type expr =
     IntLit of int
   | StringLit of string
   | BoolLit of bool
+  | ListC of expr list
+  | ArrayC of expr list
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
@@ -26,7 +32,7 @@ type vdef = {
     vname : string;
     vvalue : expr;
   }
-
+              
 type stmt =
     Block of stmt list
   | Expr of expr
@@ -49,7 +55,7 @@ type msg_decl = {
     mformals : bind list;
     mbody : stmt list;
   }
-		   
+
 type drop_after_decl = {
     dabody : stmt list;
   }
@@ -91,6 +97,8 @@ let rec string_of_expr = function
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | Id(s) -> s
+  | ArrayC(el) -> "Array" ^ "[" ^ String.concat ", " (List.map string_of_expr el) ^ "]"
+  | ListC(el) -> "List" ^ "[" ^ String.concat ", " (List.map string_of_expr el) ^ "]"
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
@@ -98,23 +106,35 @@ let rec string_of_expr = function
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | NewActor(a, el) ->
-      a ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+      "new" ^ a ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
 
-let string_of_typ = function
+let string_of_ptyp = function
     Int -> "int"
   | String -> "string"
   | Bool -> "bool"
   | Void -> "void"
   | Actor -> "actor"
+
+let string_of_ctyp = function
+    List -> "list"
+  | Array -> "array"
+
+let string_of_typ = function
+    Ptyp(e) -> string_of_ptyp e
+  | Ctyp(c, e) -> string_of_ctyp c ^ "<" ^ string_of_ptyp e ^ ">"
                
-let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id
+
+let string_of_vdef vdef =
+  string_of_typ vdef.vtyp ^ " " ^ vdef.vname ^ " = " ^ string_of_expr vdef.vvalue
 
 let rec string_of_stmt = function
     Block(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
-  | Expr(expr) -> string_of_expr expr ^ ";\n";
-  | Vdecl((t, id)) -> string_of_vdecl (t, id);
+  | Expr(expr) -> string_of_expr expr ^ ";\n"
+  | Vdecl((t, id)) -> string_of_vdecl (t, id) ^ "\n";
+  | Vdef(vdef) -> string_of_vdef vdef ^ ";\n"
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
   | If(e, s, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
   | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^

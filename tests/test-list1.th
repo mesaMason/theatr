@@ -1,0 +1,4 @@
+func main() -> int:
+    list<int> a;
+    print("it works");
+    return 0
