@@ -158,7 +158,9 @@ let translate (globals, functions, actors) =
         let actuals_list_vals = List.map (expr builder) actuals in
         let actuals_list_types = List.map (L.type_of) actuals_list_vals in
         let actuals_array = (Array.of_list actuals_list_types) in
-        let act = L.struct_type context actuals_array in
+        
+        let actuals_struct_type = L.struct_type context actuals_array in
+        let actuals_struct = L.build_alloca actuals_struct_type "pthread" builder in
         (*
         let act = (match List.length actuals with
                     1 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) 
@@ -171,7 +173,7 @@ let translate (globals, functions, actors) =
         let func = L.const_bitcast fdef (L.pointer_type (L.function_type (L.pointer_type i8_t) 
                     [|L.pointer_type i8_t|])) in
         
-        let args = [| pthread_pt ; attr ; func ; act |] in 
+        let args = [| pthread_pt ; attr ; func ; actuals_struct |] in 
         let _ = L.build_call pthread_create_func args "pthread_create_result" builder in
 
         let join_attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type (L.pointer_type i8_t)) in
