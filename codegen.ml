@@ -231,12 +231,17 @@ let translate (globals, functions, actors) =
         let f = (match (List.hd actuals) with 
                     A.Id s -> s
                   | _ -> raise(Failure ("expected valid func id for pthread()"))) in 
-        
+
+        let actuals_list_vals = List.map (expr builder) actuals in
+        let actuals_list_types = List.map (L.type_of) actuals_list_vals in
+        let actuals_array = (Array.of_list actuals_list_types) in
+        let act = L.struct_type context actuals_array in
+        (*
         let act = (match List.length actuals with
                     1 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) 
                   | 2 -> L.const_inttoptr (expr builder (List.nth actuals 1)) (L.pointer_type i8_t) 
                   | _ -> raise(Failure ("invalid number of arguments for pthread_create()"))) in 
-        
+         *)
         let (fdef, _) = StringMap.find f function_decls in 
         let pthread_pt = L.build_alloca i32_t "tid" builder in  
         let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
