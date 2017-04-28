@@ -155,7 +155,7 @@ let translate (globals, functions, actors) =
                     A.Id s -> s
                   | _ -> raise(Failure ("expected valid func id for pthread()"))) in 
 
-
+        let act_func_name = match actuals with hd :: tl -> A.string_of_expr hd in
         let act_args = match actuals with hd :: tl -> tl in 
         let act_list_vals = List.map (expr builder) act_args in
         let act_list_types = List.map (L.type_of) act_list_vals in
@@ -163,24 +163,24 @@ let translate (globals, functions, actors) =
         let act_type_array = (Array.of_list act_list_types) in
 
         (* create struct type 
-           alloca the struct, name it "pthread_struct" 
-           filling in the struct's values with build_in_bounds_gep 
-           bitcasting the pointer to the struct on the stack 
-           finally passing the pointer to the pthread_create arguments 
-           Not working: maybe need to make the struct a global struct before casting?
+           set struct body to fill in the struct type 
+           allocate an instance of the struct on the stack
+           iterate through the args, store them in appropriate index on the stack
+           cast the struct to a pointer type
          *)
-        let act_struct_type = L.struct_type context act_type_array in
-        let act_struct = L.const_struct context act_vals_array in
-        (*        let act_struct = L.build_alloca act_struct_type "pthread_struct_instance" builder in*)
-        (* let _ = L.build_in_bounds_gep act_struct act_vals_array "" builder in*)
-        let act_struct_casted = L.const_bitcast (L.const_bitcast act_struct (L.pointer_type act_struct_type)) (L.pointer_type i8_t) in
+        let act_struct_type = L.named_struct_type context (act_func_name ^ "_struct") in
+        let _ = L.struct_set_body act_struct_type act_type_array false in 
+        let act_struct = L.build_alloca act_struct_type "" builder in
+        let index_and_store idx _ =
+            let pt = L.build_struct_gep act_struct idx "" builder in
+            let _ = L.build_store act_vals_array.(idx) pt builder in idx+1 in
+        let _ = (match List.length act_list_vals with
+                    0 -> -1
+                  | _ -> List.fold_left index_and_store 0 act_list_vals) in 
+        let act_struct_casted = (match List.length act_list_vals with
+            0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
+          | _ -> L.build_bitcast act_struct (L.pointer_type i8_t) "" builder) in
 
-        (*
-        let act = (match List.length actuals with
-                    1 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) 
-                  | 2 -> L.const_inttoptr (expr builder (List.nth actuals 1)) (L.pointer_type i8_t) 
-                  | _ -> raise(Failure ("invalid number of arguments for pthread_create()"))) in 
-         *)
         let (fdef, _) = StringMap.find f function_decls in 
         let pthread_pt = L.build_alloca i32_t "tid" builder in  
         let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
