@@ -5,6 +5,7 @@
 
 struct Books {
     int   book_id;
+  int author_id;
 };
 
 void *dolphin(void *ptr)
@@ -20,7 +21,7 @@ int main()
 {
   struct Books b1;
   b1.book_id = 25;
-    
+  b1.author_id = 66;
   pthread_t tid;
   pthread_create(&tid, NULL, dolphin, &b1);
   pthread_join(tid, NULL);

@@ -155,12 +155,26 @@ let translate (globals, functions, actors) =
                     A.Id s -> s
                   | _ -> raise(Failure ("expected valid func id for pthread()"))) in 
 
-        let actuals_list_vals = List.map (expr builder) actuals in
-        let actuals_list_types = List.map (L.type_of) actuals_list_vals in
-        let actuals_array = (Array.of_list actuals_list_types) in
-        
-        let actuals_struct_type = L.struct_type context actuals_array in
-        let actuals_struct = L.build_alloca actuals_struct_type "pthread" builder in
+
+        let act_args = match actuals with hd :: tl -> tl in 
+        let act_list_vals = List.map (expr builder) act_args in
+        let act_list_types = List.map (L.type_of) act_list_vals in
+        let act_vals_array = (Array.of_list act_list_vals) in
+        let act_type_array = (Array.of_list act_list_types) in
+
+        (* create struct type 
+           alloca the struct, name it "pthread_struct" 
+           filling in the struct's values with build_in_bounds_gep 
+           bitcasting the pointer to the struct on the stack 
+           finally passing the pointer to the pthread_create arguments 
+           Not working: maybe need to make the struct a global struct before casting?
+         *)
+        let act_struct_type = L.struct_type context act_type_array in
+        let act_struct = L.const_struct context act_vals_array in
+        (*        let act_struct = L.build_alloca act_struct_type "pthread_struct_instance" builder in*)
+        (* let _ = L.build_in_bounds_gep act_struct act_vals_array "" builder in*)
+        let act_struct_casted = L.const_bitcast (L.const_bitcast act_struct (L.pointer_type act_struct_type)) (L.pointer_type i8_t) in
+
         (*
         let act = (match List.length actuals with
                     1 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) 
@@ -173,7 +187,7 @@ let translate (globals, functions, actors) =
         let func = L.const_bitcast fdef (L.pointer_type (L.function_type (L.pointer_type i8_t) 
                     [|L.pointer_type i8_t|])) in
         
-        let args = [| pthread_pt ; attr ; func ; actuals_struct |] in 
+        let args = [| pthread_pt ; attr ; func ; act_struct_casted |] in 
         let _ = L.build_call pthread_create_func args "pthread_create_result" builder in
 
         let join_attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type (L.pointer_type i8_t)) in
