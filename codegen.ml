@@ -246,11 +246,16 @@ let translate (globals, functions, actors) =
            finally passing the pointer to the pthread_create arguments 
            Not working: maybe need to make the struct a global struct before casting?
          *)
-        let act_struct_type = L.struct_type context act_type_array in
-        let act_struct = L.const_struct context act_vals_array in
-        (*        let act_struct = L.build_alloca act_struct_type "pthread_struct_instance" builder in*)
-        (* let _ = L.build_in_bounds_gep act_struct act_vals_array "" builder in*)
-        let act_struct_casted = L.const_bitcast (L.const_bitcast act_struct (L.pointer_type act_struct_type)) (L.pointer_type i8_t) in
+        let act_struct_type = L.named_struct_type context "act_struct" in
+        let _ = L.struct_set_body act_struct_type act_type_array false in
+        let init = L.const_named_struct act_struct_type act_vals_array in 
+        let act_struct_global = L.define_global "act_struct_global" init the_module in
+        
+        (*let act_struct = L.declare_global act_struct_type "act_struct_global" the_module in
+        let _ = L.set_linkage (L.linkage act_struct) act_struct_const in*)
+        (*let act_struct = L.build_alloca act_struct_global "" builder in*)
+        (*let _ = L.build_in_bounds_gep act_struct act_vals_array "" builder in*)
+        let act_struct_casted = L.const_bitcast act_struct_global (L.pointer_type i8_t) in
 
         (*
         let act = (match List.length actuals with
