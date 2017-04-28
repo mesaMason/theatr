@@ -1,0 +1,17 @@
+func greeter() -> void:
+    print("Hello from inside greeter thread")
+
+func goodbye() -> void:
+    print("Hello from inside goodbye thread")
+
+func calculator(int c, int b) -> void:
+    print("Hello from inside calculator thread. My count is ")
+    print(c)
+    print(b)
+
+func main() -> int:
+    pthread_create(calculator, 5, 42)
+    pthread_create(greeter)
+    pthread_create(goodbye)
+
+    return 0
