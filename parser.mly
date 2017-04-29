@@ -8,11 +8,12 @@ open Ast
 %token FUNC_DECL FUNC_ARROW
 %token PLUS MINUS TIMES DIVIDE ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
-%token RETURN IF ELSE FOR WHILE INT BOOL VOID
+%token RETURN IF ELSE FOR WHILE INT DOUBLE BOOL VOID
 %token RECEIVE DROP AFTER
 %token NEW ACTOR
 %token LIST ARRAY
 %token <int> INTLIT
+%token <float> DOUBLELIT
 %token <string> STRINGLIT
 %token <string> ID
 %token EOF
@@ -101,6 +102,7 @@ formal_list:
 
 ptyp:
     INT { Int }
+  | DOUBLE { Double }
   | BOOL { Bool }
   | VOID { Void }
   | ACTOR { Actor }
@@ -143,6 +145,7 @@ expr_opt:
 
 expr:
     INTLIT          { IntLit($1) }
+  | DOUBLELIT        { DoubleLit($1) }
   | STRINGLIT        { StringLit($1) }  
   | TRUE             { BoolLit(true) }
   | FALSE            { BoolLit(false) }

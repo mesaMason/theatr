@@ -5,7 +5,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type ptyp = Int | Bool | Void | String | Actor
+type ptyp = Int | Bool | Double | Void | String | Actor
 
 type ctyp = List | Array
 
@@ -15,6 +15,7 @@ type bind = typ * string
 
 type expr =
     IntLit of int
+  | DoubleLit of float
   | StringLit of string
   | BoolLit of bool
   | ListC of expr list
@@ -93,6 +94,7 @@ let string_of_uop = function
 
 let rec string_of_expr = function
     IntLit(l) -> string_of_int l
+  | DoubleLit(f) -> string_of_float f
   | StringLit(s) -> s
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
@@ -115,6 +117,7 @@ let string_of_ptyp = function
   | Bool -> "bool"
   | Void -> "void"
   | Actor -> "actor"
+  | Double -> "double"
 
 let string_of_ctyp = function
     List -> "list"
@@ -143,6 +146,8 @@ let rec string_of_stmt = function
       "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
       string_of_expr e3  ^ ") " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+
+let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^

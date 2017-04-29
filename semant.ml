@@ -71,7 +71,7 @@ let check (globals, functions, actors) =
     {typ = Ptyp(Void); fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
   in
 
-  let print_typs = List.map format_print_decls [Ptyp(String); Ptyp(Int); Ptyp(Bool)] in
+  let print_typs = List.map format_print_decls [Ptyp(String); Ptyp(Int); Ptyp(Double); Ptyp(Bool)] in
   let built_in_decls = add_to_map StringMap.empty print_typs in
   
   (* Function declarations for named functions  *)
@@ -110,6 +110,7 @@ let check (globals, functions, actors) =
     (* Return the type of an expression or throw an exception *)
     let rec expr = function
     	IntLit _ -> Ptyp(Int)
+      | DoubleLit _ -> Ptyp(Double)
       | StringLit _ -> Ptyp(String)
       | BoolLit _ -> Ptyp(Bool)
       | Id s -> type_of_identifier s
@@ -126,12 +127,16 @@ let check (globals, functions, actors) =
       | Binop(e1, op, e2) as e -> let t1 = expr e1 and t2 = expr e2 in
 	(match op with
           Add | Sub | Mult | Div when t1 = Ptyp(Int) && t2 = Ptyp(Int) -> Ptyp(Int)
-	| Equal | Neq when t1 = t2 -> Ptyp(Bool)
+	    | Add | Sub | Mult | Div when t1 = Ptyp(Double) && t2 = Ptyp(Double) -> Ptyp(Double)
+    | Equal | Neq when t1 = t2 -> Ptyp(Bool)
 	| Less | Leq | Greater | Geq when t1 = Ptyp(Int) && t2 = Ptyp(Int) -> Ptyp(Bool)
+    | Less | Leq | Greater | Geq when t1 = Ptyp(Double) && t2 = Ptyp(Double) -> Ptyp(Bool)
 	| And | Or when t1 = Ptyp(Bool) && t2 = Ptyp(Bool) -> Ptyp(Bool)
         | _ -> raise (Failure ("illegal binary operator " ^
               string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
-              string_of_typ t2 ^ " in " ^ string_of_expr e))
+              string_of_typ t2 ^ " in " ^ string_of_expr e
+              ^ ". e1: " ^ string_of_expr e1 ^ "e2: " ^ string_of_expr e2
+              ))
         )
       | Unop(op, e) as ex -> let t = expr e in
 	 (match op with
