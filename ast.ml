@@ -117,6 +117,7 @@ let string_of_ptyp = function
   | Bool -> "bool"
   | Void -> "void"
   | Actor -> "actor"
+  | Double -> "double"
 
 let string_of_ctyp = function
     List -> "list"
@@ -145,14 +146,6 @@ let rec string_of_stmt = function
       "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
       string_of_expr e3  ^ ") " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
-
-let string_of_typ = function
-    Int -> "int"
-  | Double -> "double"
-  | String -> "string"
-  | Bool -> "bool"
-  | Void -> "void"
-  | Actor -> "actor"
 
 let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
 
