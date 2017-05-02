@@ -62,6 +62,50 @@ let translate (globals, functions, actors) =
   let pthread_join_t = L.function_type i32_t pthread_join_arr in
   let pthread_join_func = L.declare_function "pthread_join" pthread_join_t the_module in
 
+  (* construct the actor's main looping function to pass to pthread_create 
+     This will be almost the same for each actor, the difference being the 
+     specific local variables that each actor needs to maintain its state
+     on its thread's stack *)
+  let actor_decls =
+    let actor_decl m adecl =
+      let name = adecl.A.aname
+      and formal_types =
+	Array.of_list (List.map (fun (t,_) -> ltype_of_typ t) adecl.A.aformals)
+      in let atype = L.function_type (L.pointer_type i8_t) formal_types in
+      StringMap.add name (L.define_function name atype the_module, adecl) m in
+    List.fold_left actor_decl StringMap.empty functions in
+
+  (* Fill in the body of the actor's thread function *)
+  let build_actor_thread_func_body adecl =
+    let (the_function, _) = StringMap.find adecl.A.aname actor_decls in
+    let builder = L.builder_at_end context (L.entry_block the_function) in
+
+    (* Construct the thread function's "locals": 
+       Since this function is passed into pthread, it will have to 
+       create a struct pointer that matches its arguments and dereference 
+       the passed in ptr argument to fill out the argument variables on the stack
+       ex:
+       void *dolphin_actor(void *ptr) {
+           struct dolphin_state *s = ptr;
+           int height = s->height;
+           int weight = s->weight;
+       }
+    *)
+    let local_vars =
+      let add_formal m (t, n) p = L.set_value_name n p;
+	let local = L.build_alloca (ltype_of_typ t) n builder in
+	ignore (L.build_store p local builder);
+	StringMap.add n local m in
+
+      let add_local m (t, n) =
+	let local_var = L.build_alloca (ltype_of_typ t) n builder
+	in StringMap.add n local_var m in
+
+      let formals = List.fold_left2 add_formal StringMap.empty adecl.A.aformals
+        (Array.to_list (L.params the_function)) in
+      List.fold_left add_local formals adecl.A.alocals in
+
+
   (* Define each function (arguments and return type) so we can call it *)
   let function_decls =
     let function_decl m fdecl =
@@ -113,6 +157,7 @@ let translate (globals, functions, actors) =
       let formals = List.fold_left2 add_formal StringMap.empty fdecl.A.formals
           (Array.to_list (L.params the_function)) in
       List.fold_left add_local formals fdecl.A.body in
+
 
     (* Return the value for a variable or formal argument *)
     let lookup n = try StringMap.find n local_vars
