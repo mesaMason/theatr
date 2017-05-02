@@ -66,6 +66,7 @@ let translate (globals, functions, actors) =
      This will be almost the same for each actor, the difference being the 
      specific local variables that each actor needs to maintain its state
      on its thread's stack *)
+(*
   let actor_decls =
     let actor_decl m adecl =
       let name = adecl.A.aname
@@ -104,7 +105,7 @@ let translate (globals, functions, actors) =
       let formals = List.fold_left2 add_formal StringMap.empty adecl.A.aformals
         (Array.to_list (L.params the_function)) in
       List.fold_left add_local formals adecl.A.alocals in
-
+ *)
 
   (* Define each function (arguments and return type) so we can call it *)
   let function_decls =

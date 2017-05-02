@@ -49,7 +49,7 @@ void *dolphin_actor(void *ptr)
 void *trainer_actor(void *ptr)
 {
   // copy state variables from ptr, location of msg queue
-  struct state *s = ptr;
+  struct trainer_state *s = ptr;
   int age = s->age;
   while (true) {
     // check msg queue

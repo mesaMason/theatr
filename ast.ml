@@ -64,7 +64,7 @@ type drop_after_decl = {
 type actor_decl = {
     aname : string;
     aformals : bind list;
-    alocals : bind list;
+    alocals : stmt list;
     receives : msg_decl list;
     drop : drop_after_decl;
     after : drop_after_decl;
@@ -165,7 +165,7 @@ let string_of_mdecl mdecl =
 let string_of_adecl adecl =
   adecl.aname ^ "(" ^ String.concat ", " (List.map snd adecl.aformals) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl adecl.alocals) ^
+  String.concat "" (List.map string_of_stmt adecl.alocals) ^
   "\nreceives:\n" ^ String.concat "" (List.map string_of_mdecl adecl.receives) ^
   "\ndrop:\n" ^ String.concat "" (List.map string_of_stmt adecl.drop.dabody) ^
   "\nafter:\n" ^ String.concat "" (List.map string_of_stmt adecl.after.dabody) ^
