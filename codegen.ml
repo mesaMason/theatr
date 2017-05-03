@@ -62,21 +62,31 @@ let translate (globals, functions, actors) =
   let pthread_join_t = L.function_type i32_t pthread_join_arr in
   let pthread_join_func = L.declare_function "pthread_join" pthread_join_t the_module in
 
+  (* construct the struct types that will hold the arguments for each actor
+     a pointer to an instance of these structs will be passed in during the pthread call *)
+  let actor_struct_types =
+    let actor_struct m adecl =
+      let list_arg_types = List.map (fun (t,_) -> ltype_of_typ t) adecl.A.aformals in
+      let type_array = Array.of_list list_arg_types in
+      let name = adecl.A.aname in
+      let struct_type = L.named_struct_type context (name ^ "_struct") in
+      let _ = L.struct_set_body struct_type type_array false in
+      StringMap.add name struct_type m in
+    List.fold_left actor_struct StringMap.empty actors in
+
   (* construct the actor's main looping function to pass to pthread_create 
      This will be almost the same for each actor, the difference being the 
      specific local variables that each actor needs to maintain its state
      on its thread's stack *)
-(*
   let actor_decls =
     let actor_decl m adecl =
       let name = adecl.A.aname
-      and formal_types =
-	Array.of_list (List.map (fun (t,_) -> ltype_of_typ t) adecl.A.aformals)
-      in let atype = L.function_type (L.pointer_type i8_t) formal_types in
+      in let atype = L.function_type (L.pointer_type i8_t) [|L.pointer_type i8_t|] in
+      (* type of the function is void function(void star), for pthread *)
       StringMap.add name (L.define_function name atype the_module, adecl) m in
-    List.fold_left actor_decl StringMap.empty functions in
-
-  (* Fill in the body of the actor's thread function *)
+    List.fold_left actor_decl StringMap.empty actors in
+  
+  (* Fill in the body of the each actor's thread function *)
   let build_actor_thread_func_body adecl =
     let (the_function, _) = StringMap.find adecl.A.aname actor_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
@@ -93,19 +103,36 @@ let translate (globals, functions, actors) =
        }
     *)
     let local_vars =
-      let add_formal m (t, n) p = L.set_value_name n p;
-	let local = L.build_alloca (ltype_of_typ t) n builder in
-	ignore (L.build_store p local builder);
-	StringMap.add n local m in
+      (* create the struct pointer - steps copied from LLVM emitted by C code *)
+      let add_struct_p voidp = L.set_value_name "ptr" voidp;
+        let local_voidp = L.build_alloca (L.pointer_type i8_t) "" builder in
+        ignore (L.build_store voidp local_voidp builder);
+        let struct_type = StringMap.find adecl.A.aname actor_struct_types in
+	let local_struct_p = L.build_alloca (L.pointer_type struct_type) "state_struct" builder in
+        let casted_voidp = L.build_bitcast local_voidp (L.pointer_type struct_type) "" builder in
+	ignore (L.build_store casted_voidp local_struct_p builder); in
 
-      let add_local m (t, n) =
-	let local_var = L.build_alloca (ltype_of_typ t) n builder
-	in StringMap.add n local_var m in
-
-      let formals = List.fold_left2 add_formal StringMap.empty adecl.A.aformals
-        (Array.to_list (L.params the_function)) in
+      (* create the formals as local variables, add them to locals map *)
+      let add_formal (m, idx) (t, n) = 
+        let load_struct = L.build_load local_struct_p "" builder in
+        let var_at_idx = L.build_in_bounds_gep load_struct [|0; idx|] "" builder in
+        let local = L.build_alloca (ltype_of_typ t) n builder in
+        ignore (L.build_store var_at_idx local builder);
+	(StringMap.add n local m, idx+1) in
+      let add_local m stmt = match stmt with
+        | A.Vdecl (t, n) ->
+           let local_var = L.build_alloca (ltype_of_typ t) n builder
+           in StringMap.add n local_var m
+        | A.Vdef v ->
+           let local_var = L.build_alloca (ltype_of_typ v.A.vtyp) v.A.vname builder
+           in StringMap.add v.A.vname local_var m
+        | _ -> m
+      in
+      let (formals, _) = List.fold_left add_formal (StringMap.empty, 0) adecl.A.aformals in
       List.fold_left add_local formals adecl.A.alocals in
- *)
+
+  ignore(List.iter build_actor_thread_func_body actors) in
+  (* finished building actor thread functions, move on to normal functions *)
 
   (* Define each function (arguments and return type) so we can call it *)
   let function_decls =
