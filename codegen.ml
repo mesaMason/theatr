@@ -404,7 +404,6 @@ let translate (globals, functions, actors) =
          let pthread_args = [| pthread_pt ; attr ; adef ; a_struct_ptr_casted |] in
          let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
          result
-                                                           
     in
 
     (* Invoke "f builder" if the current block doesn't already
