@@ -1,4 +1,6 @@
 dolphin(int weight, int age):
+    print(weight);
+    print(age)
     receive:
         eat(int food):
             weight = weight + food

@@ -377,8 +377,34 @@ let translate (globals, functions, actors) =
 	     let result = (match fdecl.A.typ with A.Ptyp(Void) -> ""
                                             | _ -> f ^ "_result") in
          L.build_call fdef (Array.of_list actuals) result builder
-      (* TODO: codegen for actors *)
-      | A.NewActor (a, act) -> L.const_int i32_t 42
+      (* codegen for actors: create a new struct on the stack to store arguments
+         and pass a pointer to the struct, along with a pointer to the actor's
+         function to pthread *)
+      | A.NewActor (a, act) ->
+         let (adef, adecl) = StringMap.find a actor_decls in
+         let a_struct_type = StringMap.find a actor_struct_types in
+         let actuals = List.rev (List.map (expr builder) (List.rev act)) in
+         let result = L.const_int i32_t 42 (* TODO: make this a ptr to the msg queue *) in
+         (* create the actor's struct on the stack *)
+         (* TODO: this needs to go on the heap!! *)
+         let a_struct = L.build_alloca a_struct_type "" builder in
+         (* fill in the struct with actuals *)
+         let index_and_store idx actual =
+           let ptr = L.build_struct_gep a_struct idx "" builder in
+           let _ = L.build_store actual ptr builder in
+           idx+1 in
+         let _ = (match List.length actuals with
+               0 -> -1
+             | _ -> List.fold_left index_and_store 0 actuals) in
+         let a_struct_ptr_casted = (match List.length actuals with
+               0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
+             | _ -> L.build_bitcast a_struct (L.pointer_type i8_t) "" builder) in
+         let pthread_pt = L.build_alloca i32_t "tid" builder in
+         let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
+         let pthread_args = [| pthread_pt ; attr ; adef ; a_struct_ptr_casted |] in
+         let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
+         result
+                                                           
     in
 
     (* Invoke "f builder" if the current block doesn't already
