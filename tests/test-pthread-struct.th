@@ -1,0 +1,8 @@
+func calculator(int c, int b) -> void:
+    print("Hello from inside calculator thread. My count is ")
+    print(c)
+    print(b)
+
+func main() -> int:
+    pthread_create(calculator, 5, 42)
+    return 0

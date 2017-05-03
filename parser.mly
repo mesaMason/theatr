@@ -50,7 +50,7 @@ receives is a msg_decl list
 rop and after are stmt lists
 */
 adecl:
-   ID LPAREN formals_opt RPAREN COLON LBRACE vdecl_list receives drop after RBRACE
+   ID LPAREN formals_opt RPAREN COLON LBRACE stmt_list receives drop after RBRACE
      { { aname = $1;
 	 aformals = $3;
 	 alocals = List.rev $7;

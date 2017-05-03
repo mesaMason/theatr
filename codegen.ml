@@ -62,6 +62,88 @@ let translate (globals, functions, actors) =
   let pthread_join_t = L.function_type i32_t pthread_join_arr in
   let pthread_join_func = L.declare_function "pthread_join" pthread_join_t the_module in
 
+  (* construct the struct types that will hold the arguments for each actor
+     a pointer to an instance of these structs will be passed in during the pthread call *)
+  let actor_struct_types =
+    let actor_struct m adecl =
+      let list_arg_types = List.map (fun (t,_) -> ltype_of_typ t) adecl.A.aformals in
+      let type_array = Array.of_list list_arg_types in
+      let name = adecl.A.aname in
+      let struct_type = L.named_struct_type context (name ^ "_struct") in
+      let _ = L.struct_set_body struct_type type_array false in
+      StringMap.add name struct_type m in
+    List.fold_left actor_struct StringMap.empty actors in
+
+  (* construct the actor's main looping function to pass to pthread_create 
+     This will be almost the same for each actor, the difference being the 
+     specific local variables that each actor needs to maintain its state
+     on its thread's stack *)
+  let actor_decls =
+    let actor_decl m adecl =
+      let name = adecl.A.aname
+      in let atype = L.function_type (L.pointer_type i8_t) [|L.pointer_type i8_t|] in
+      (* type of the function is void function(void star), for pthread *)
+      StringMap.add name (L.define_function name atype the_module, adecl) m in
+    List.fold_left actor_decl StringMap.empty actors in
+  
+  (* Fill in the body of the each actor's thread function *)
+  let build_actor_thread_func_body adecl =
+    let (the_function, _) = StringMap.find adecl.A.aname actor_decls in
+    let builder = L.builder_at_end context (L.entry_block the_function) in
+
+    (* Construct the thread function's "locals": 
+       Since this function is passed into pthread, it will have to 
+       create a struct pointer that matches its arguments and dereference 
+       the passed in ptr argument to fill out the argument variables on the stack
+       ex:
+       void *dolphin_actor(void *ptr) {
+           struct dolphin_state *s = ptr;
+           int height = s->height;
+           int weight = s->weight;
+       }
+    *)
+      (* create the struct pointer - steps copied from LLVM emitted by C code *)
+    let voidp = Array.get (L.params the_function) 0 in
+    let _ = L.set_value_name "ptr" voidp in
+    let local_voidp = L.build_alloca (L.pointer_type i8_t) "" builder in
+    let _ =  L.build_store voidp local_voidp builder in
+    let struct_type = StringMap.find adecl.A.aname actor_struct_types in
+    let local_struct_p = L.build_alloca (L.pointer_type struct_type) "state_struct" builder in
+    let casted_voidp = L.build_bitcast local_voidp (L.pointer_type struct_type) "" builder in
+    let _ = L.build_store casted_voidp local_struct_p builder in
+
+    let local_vars =
+      (* create the formals as local variables, add them to locals map *)
+      let add_formal (m, idx) (t, n) = 
+        let load_struct = L.build_load local_struct_p "" builder in
+        (* need to cast 0 and idx to be i32_t before passing to index array in LLVM *)
+        let zero = L.const_int i32_t 0 in 
+        let idxVal = L.const_int i32_t idx in
+        let var_at_idx = L.build_in_bounds_gep load_struct [|zero; idxVal|] "" builder in
+        let var_stored = L.build_load var_at_idx "" builder in
+        let local = L.build_alloca (ltype_of_typ t) n builder in
+        ignore (L.build_store var_stored local builder);
+	(StringMap.add n local m, idx+1) in
+      let add_local m stmt = match stmt with
+        | A.Vdecl (t, n) ->
+           let local_var = L.build_alloca (ltype_of_typ t) n builder
+           in StringMap.add n local_var m
+        | A.Vdef v ->
+           let local_var = L.build_alloca (ltype_of_typ v.A.vtyp) v.A.vname builder
+           in StringMap.add v.A.vname local_var m
+        | _ -> m
+      in
+      let (formals, _) = List.fold_left add_formal (StringMap.empty, 0) adecl.A.aformals in
+      List.fold_left add_local formals adecl.A.alocals in
+    let lookup n = try StringMap.find n local_vars
+                   with Not_found -> try StringMap.find n global_vars
+                   with Not_found -> raise (Failure ("undeclared variable " ^ n))
+    in
+    let ret_void_star = L.build_alloca (i8_t) "ret" builder in
+    ignore(L.build_ret ret_void_star builder) in
+  let _ = List.iter build_actor_thread_func_body actors in
+  (* finished building actor thread functions, move on to normal functions *)
+
   (* Define each function (arguments and return type) so we can call it *)
   let function_decls =
     let function_decl m fdecl =
@@ -113,6 +195,7 @@ let translate (globals, functions, actors) =
       let formals = List.fold_left2 add_formal StringMap.empty fdecl.A.formals
           (Array.to_list (L.params the_function)) in
       List.fold_left add_local formals fdecl.A.body in
+
 
     (* Return the value for a variable or formal argument *)
     let lookup n = try StringMap.find n local_vars
@@ -231,19 +314,40 @@ let translate (globals, functions, actors) =
         let f = (match (List.hd actuals) with 
                     A.Id s -> s
                   | _ -> raise(Failure ("expected valid func id for pthread()"))) in 
-        
-        let act = (match List.length actuals with
-                    1 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) 
-                  | 2 -> L.const_inttoptr (expr builder (List.nth actuals 1)) (L.pointer_type i8_t) 
-                  | _ -> raise(Failure ("invalid number of arguments for pthread_create()"))) in 
-        
+
+        let act_func_name = match actuals with hd :: tl -> A.string_of_expr hd in
+        let act_args = match actuals with hd :: tl -> tl in 
+        let act_list_vals = List.map (expr builder) act_args in
+        let act_list_types = List.map (L.type_of) act_list_vals in
+        let act_vals_array = (Array.of_list act_list_vals) in
+        let act_type_array = (Array.of_list act_list_types) in
+
+        (* create struct type 
+           set struct body to fill in the struct type 
+           allocate an instance of the struct on the stack
+           iterate through the args, store them in appropriate index on the stack
+           cast the struct to a pointer type
+         *)
+        let act_struct_type = L.named_struct_type context (act_func_name ^ "_struct") in
+        let _ = L.struct_set_body act_struct_type act_type_array false in 
+        let act_struct = L.build_alloca act_struct_type "" builder in
+        let index_and_store idx _ =
+            let pt = L.build_struct_gep act_struct idx "" builder in
+            let _ = L.build_store act_vals_array.(idx) pt builder in idx+1 in
+        let _ = (match List.length act_list_vals with
+                    0 -> -1
+                  | _ -> List.fold_left index_and_store 0 act_list_vals) in 
+        let act_struct_casted = (match List.length act_list_vals with
+            0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
+          | _ -> L.build_bitcast act_struct (L.pointer_type i8_t) "" builder) in
+
         let (fdef, _) = StringMap.find f function_decls in 
         let pthread_pt = L.build_alloca i32_t "tid" builder in  
         let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
         let func = L.const_bitcast fdef (L.pointer_type (L.function_type (L.pointer_type i8_t) 
                     [|L.pointer_type i8_t|])) in
         
-        let args = [| pthread_pt ; attr ; func ; act |] in 
+        let args = [| pthread_pt ; attr ; func ; act_struct_casted |] in 
         let _ = L.build_call pthread_create_func args "pthread_create_result" builder in
 
         let join_attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type (L.pointer_type i8_t)) in
@@ -273,8 +377,33 @@ let translate (globals, functions, actors) =
 	     let result = (match fdecl.A.typ with A.Ptyp(Void) -> ""
                                             | _ -> f ^ "_result") in
          L.build_call fdef (Array.of_list actuals) result builder
-      (* TODO: codegen for actors *)
-      | A.NewActor (a, act) -> L.const_int i32_t 42
+      (* codegen for actors: create a new struct on the stack to store arguments
+         and pass a pointer to the struct, along with a pointer to the actor's
+         function to pthread *)
+      | A.NewActor (a, act) ->
+         let (adef, adecl) = StringMap.find a actor_decls in
+         let a_struct_type = StringMap.find a actor_struct_types in
+         let actuals = List.rev (List.map (expr builder) (List.rev act)) in
+         let result = L.const_int i32_t 42 (* TODO: make this a ptr to the msg queue *) in
+         (* create the actor's struct on the stack *)
+         (* TODO: this needs to go on the heap!! *)
+         let a_struct = L.build_alloca a_struct_type "" builder in
+         (* fill in the struct with actuals *)
+         let index_and_store idx actual =
+           let ptr = L.build_struct_gep a_struct idx "" builder in
+           let _ = L.build_store actual ptr builder in
+           idx+1 in
+         let _ = (match List.length actuals with
+               0 -> -1
+             | _ -> List.fold_left index_and_store 0 actuals) in
+         let a_struct_ptr_casted = (match List.length actuals with
+               0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
+             | _ -> L.build_bitcast a_struct (L.pointer_type i8_t) "" builder) in
+         let pthread_pt = L.build_alloca i32_t "tid" builder in
+         let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
+         let pthread_args = [| pthread_pt ; attr ; adef ; a_struct_ptr_casted |] in
+         let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
+         result
     in
 
     (* Invoke "f builder" if the current block doesn't already
