@@ -3,10 +3,10 @@
 #include <pthread.h>
 #include "queue.h"
 
-
 head initialize_queue() {
   int ret;
   head qhead;
+  qhead.queue = NULL;
   ret = pthread_mutex_init(&qhead.lock, NULL);
   if (ret)
     perror("Error in initializing the queue lock");
@@ -18,7 +18,7 @@ void enqueue(head *qhead, message_t *message) {
   if (!new_queue) return;
 
   new_queue->message = message;
-  // initializing the head to null ensures that the first queue entry points to null
+  // initializing the qhead.queue to null ensures that the first queue entry points to null
   new_queue->next = qhead->queue; 
 
   qhead->queue = new_queue;

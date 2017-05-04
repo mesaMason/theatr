@@ -10,7 +10,7 @@ int main() {
   enqueue(&qhead, &message);
   enqueue(&qhead, &message2);
   retmessage = dequeue(&qhead);
-  /* printf("%d\n",retmessage->val); */
-  /* print_list(&qhead); */
+  printf("%d\n",retmessage->val);
+  print_list(&qhead);
   return 0;
 }

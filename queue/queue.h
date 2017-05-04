@@ -2,10 +2,10 @@
 #define QUEUE_H
 #include <pthread.h>
 
+
 typedef struct message {
   int val;
 } message_t;
-
 
 typedef struct queue {
   struct queue *next;
