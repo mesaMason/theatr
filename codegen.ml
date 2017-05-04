@@ -12,6 +12,7 @@ module A = Ast
 
 module StringMap = Map.Make(String)
 
+
 let translate (globals, functions, actors) =
   let context = L.global_context () in
   let the_module = L.create_module context "Theatr"
@@ -21,6 +22,12 @@ let translate (globals, functions, actors) =
   and void_t = L.void_type context
   and d_t    = L.double_type context in
 
+  (* list of tids of actors that have been instantiated. This is a reference - 
+     not the functional way of doing it - but was easiest way to keep track of 
+     actors that have been created *)
+(*
+  let active_tids = ref [] in
+ *)
   let ltype_of_ptyp = function
       A.Int -> i32_t
     | A.Double -> d_t
@@ -142,6 +149,7 @@ let translate (globals, functions, actors) =
   let pthread_join_arr = [| pthread_t ; L.pointer_type (L.pointer_type i8_t) |] in
   let pthread_join_t = L.function_type i32_t pthread_join_arr in
   let pthread_join_func = L.declare_function "pthread_join" pthread_join_t the_module in
+
 
   (* Define each function (arguments and return type) so we can call it *)
   let function_decls =
@@ -357,10 +365,11 @@ let translate (globals, functions, actors) =
          let a_struct_ptr_casted = (match List.length actuals with
                0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
              | _ -> L.build_bitcast a_struct (L.pointer_type i8_t) "" builder) in
-         let pthread_pt = L.build_alloca i32_t "tid" builder in
+         let pthread_pt = L.build_malloc i32_t "tid" builder in
          let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
          let pthread_args = [| pthread_pt ; attr ; adef ; a_struct_ptr_casted |] in
          let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
+         (*active_tids := pthread_pt :: !active_tids;*)
          result
     in
     let rec stmt builder = function
@@ -377,7 +386,7 @@ let translate (globals, functions, actors) =
 
   
   (* Fill in the body of the given function *)
-  let build_function_body fdecl =
+  let build_function_body active_tids fdecl =
     let (the_function, _) = StringMap.find fdecl.A.fname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
     
@@ -537,10 +546,11 @@ let translate (globals, functions, actors) =
          let a_struct_ptr_casted = (match List.length actuals with
                0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
              | _ -> L.build_bitcast a_struct (L.pointer_type i8_t) "" builder) in
-         let pthread_pt = L.build_alloca i32_t "tid" builder in
+         let pthread_pt = L.build_malloc i32_t "tid" builder in
          let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
          let pthread_args = [| pthread_pt ; attr ; adef ; a_struct_ptr_casted |] in
          let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
+         active_tids := pthread_pt :: !active_tids;        
          result
     in
 
@@ -558,9 +568,22 @@ let translate (globals, functions, actors) =
       | A.Expr e -> ignore (expr builder e); builder
       | A.Vdecl v -> ignore (v); builder (* we've already added this to locals *)
       | A.Vdef v -> ignore (expr builder v.A.vvalue); builder
-      | A.Return e -> ignore (match fdecl.A.typ with
-	  A.Ptyp(Void) -> L.build_ret_void builder
-	| _ -> L.build_ret (expr builder e) builder); builder
+      | A.Return e ->
+         (* if building the main() function, add pthread_joins before the return *)
+         let builder = 
+           if fdecl.A.fname = "main" then
+             let build_pthread_join builder tid_ptr =
+               let tid_val = L.build_load tid_ptr "tid" builder in
+               let join_attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type (L.pointer_type i8_t)) in
+               L.build_call pthread_join_func [| tid_val ; join_attr |] "pthread_join_result" builder; builder
+             in
+             List.fold_left build_pthread_join builder !active_tids
+           else
+             builder
+         in
+         ignore (match fdecl.A.typ with
+	    A.Ptyp(Void) -> L.build_ret_void builder
+	  | _ -> L.build_ret (expr builder e) builder); builder
       | A.If (predicate, then_stmt, else_stmt) ->
          let bool_val = expr builder predicate in
          let merge_bb = L.append_block context "merge" the_function in
@@ -601,8 +624,8 @@ let translate (globals, functions, actors) =
     (* Add a return if the last block falls off the end *)
     add_terminal builder (match fdecl.A.typ with
         A.Ptyp(Void) -> L.build_ret_void
-      | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
+      | t -> L.build_ret (L.const_int (ltype_of_typ t) 0));
+    active_tids
   in
-  
-  List.iter build_function_body functions;
+  List.fold_left build_function_body (ref []) functions;
   the_module
