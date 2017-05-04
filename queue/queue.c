@@ -19,17 +19,18 @@ void enqueue(head *qhead, message_t *message) {
 
   new_queue->message = message;
   // initializing the qhead.queue to null ensures that the first queue entry points to null
+  pthread_mutex_lock(&qhead->lock);
   new_queue->next = qhead->queue; 
-
   qhead->queue = new_queue;
+  pthread_mutex_unlock(&qhead->lock);
 }
 
 message_t *dequeue(head *qhead) {
   queue_t *current, *prev = NULL;
   message_t *retmessage;
 
+  pthread_mutex_lock(&qhead->lock);
   if (qhead->queue == NULL) return NULL;
-
   current = qhead->queue;
   while (current->next != NULL) {
     prev = current;
@@ -43,7 +44,7 @@ message_t *dequeue(head *qhead) {
     prev->next = NULL;
   else
     qhead->queue = NULL;
-
+  pthread_mutex_unlock(&qhead->lock);
   return retmessage;
 }
 
