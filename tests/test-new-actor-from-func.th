@@ -1,0 +1,25 @@
+dolphin(int weight, int age):
+    print("hello from inside dolphin")
+    print(weight);
+    print(age)
+    receive:
+        eat(int food):
+            weight = weight + food
+    drop:
+        return;
+    after:
+        return;
+        
+func main() -> int:
+    int weight;
+    int age;
+    weight = 10;
+    age = 3;
+    actor d
+    d = new dolphin(weight, age)    
+    weight = 44
+    age = 60
+    d = new dolphin(weight, age)
+    print("new dolphin created")
+    return 0
+

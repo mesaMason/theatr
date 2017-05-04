@@ -25,9 +25,8 @@ let translate (globals, functions, actors) =
   (* list of tids of actors that have been instantiated. This is a reference - 
      not the functional way of doing it - but was easiest way to keep track of 
      actors that have been created *)
-(*
   let active_tids = ref [] in
- *)
+
   let ltype_of_ptyp = function
       A.Int -> i32_t
     | A.Double -> d_t
@@ -369,7 +368,7 @@ let translate (globals, functions, actors) =
          let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
          let pthread_args = [| pthread_pt ; attr ; adef ; a_struct_ptr_casted |] in
          let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
-         (*active_tids := pthread_pt :: !active_tids;*)
+         active_tids := pthread_pt :: !active_tids;
          result
     in
     let rec stmt builder = function
@@ -386,7 +385,7 @@ let translate (globals, functions, actors) =
 
   
   (* Fill in the body of the given function *)
-  let build_function_body active_tids fdecl =
+  let build_function_body fdecl =
     let (the_function, _) = StringMap.find fdecl.A.fname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
     
@@ -547,10 +546,11 @@ let translate (globals, functions, actors) =
                0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
              | _ -> L.build_bitcast a_struct (L.pointer_type i8_t) "" builder) in
          let pthread_pt = L.build_malloc i32_t "tid" builder in
+
          let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
          let pthread_args = [| pthread_pt ; attr ; adef ; a_struct_ptr_casted |] in
          let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
-         active_tids := pthread_pt :: !active_tids;        
+         active_tids := pthread_pt :: !active_tids;
          result
     in
 
@@ -572,12 +572,16 @@ let translate (globals, functions, actors) =
          (* if building the main() function, add pthread_joins before the return *)
          let builder = 
            if fdecl.A.fname = "main" then
+
              let build_pthread_join builder tid_ptr =
-               let tid_val = L.build_load tid_ptr "tid" builder in
+               let local_tid_ptr = L.build_alloca (L.pointer_type i32_t) "" builder in
+               let _ = L.build_store tid_ptr local_tid_ptr builder in
+               let tid_val = L.build_load local_tid_ptr "tid" builder in
+               let tid_val = L.build_load tid_val "tid" builder in
                let join_attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type (L.pointer_type i8_t)) in
                L.build_call pthread_join_func [| tid_val ; join_attr |] "pthread_join_result" builder; builder
              in
-             List.fold_left build_pthread_join builder !active_tids
+             List.fold_left build_pthread_join builder !active_tids; builder
            else
              builder
          in
@@ -624,8 +628,7 @@ let translate (globals, functions, actors) =
     (* Add a return if the last block falls off the end *)
     add_terminal builder (match fdecl.A.typ with
         A.Ptyp(Void) -> L.build_ret_void
-      | t -> L.build_ret (L.const_int (ltype_of_typ t) 0));
-    active_tids
+      | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
   in
-  List.fold_left build_function_body (ref []) functions;
+  List.iter build_function_body functions;
   the_module

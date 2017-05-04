@@ -1,0 +1,15 @@
+
+
+func main() -> int:
+    int a;
+    a = 2
+    a = foo(a)
+    print(a)
+    globalInt = 5
+    print(globalInt)
+    return 0
+
+func foo(int a) -> int:
+    return a + 1
+
+int globalInt
