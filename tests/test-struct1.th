@@ -1,0 +1,8 @@
+struct my_struct: 
+    actor my_actor
+    int wealth
+
+func main() -> int:
+    struct matt = new my_struct
+    print(5)
+    return 0

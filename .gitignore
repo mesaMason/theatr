@@ -8,6 +8,9 @@ theatr.native
 __pycache__
 *.ll
 \#*\#
+ast-master.ml
+codegen2.ml
+listex.cpp
 /.emacs.desktop
 /.emacs.desktop.lock
 *.elc

@@ -12,7 +12,7 @@ module A = Ast
 
 module StringMap = Map.Make(String)
 
-let translate (globals, functions, actors) =
+let translate (globals, functions, actors, structs) =
   let context = L.global_context () in
   let the_module = L.create_module context "Theatr"
   and i32_t  = L.i32_type  context
@@ -26,8 +26,9 @@ let translate (globals, functions, actors) =
     | A.Double -> d_t
     | A.Bool -> i1_t
     | A.Void -> void_t
+    | A.Actor -> i32_t (* TODO: change this to be a pointer *)
     | A.String -> i32_t
-    | A.Actor -> i32_t in (* TODO: change this to be a pointer *)
+  in
 
   let ltype_of_ctyp = function
       _ -> i32_t in
@@ -258,7 +259,8 @@ let translate (globals, functions, actors) =
         if typ_e = "i8*" then
             L.build_call printf_func [| e1 |] "printf" builder
         else if typ_e = "i1" then
-            if e1 = (L.const_int i1_t 1) then 
+          let e2 = L.string_of_llvalue e1 in
+            if e2 = "i1 true" then 
                 let eb = format_str_str "true" in
                 L.build_call printf_func [| eb |] "printf" builder
             else 
@@ -287,10 +289,11 @@ let translate (globals, functions, actors) =
     (* Build the code for the given statement; return the builder for
        the statement's successor *)
     let rec stmt builder = function
-  A.Block sl -> List.fold_left stmt builder sl
+        A.Block sl -> List.fold_left stmt builder sl
       | A.Expr e -> ignore (expr builder e); builder
       | A.Vdecl v -> ignore (v); builder (* we've already added this to locals *)
       | A.Vdef v -> ignore (expr builder v.A.vvalue); builder
+      | A.Sdef s -> ignore (s); builder
       | A.Return e -> ignore (match fdecl.A.typ with
 	  A.Ptyp(Void) -> L.build_ret_void builder
 	| _ -> L.build_ret (expr builder e) builder); builder
