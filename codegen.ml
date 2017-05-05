@@ -359,8 +359,8 @@ let translate (globals, functions, actors) =
     local_vars := StringMap.empty;
 
     (* create the formals as local variables, add them to locals map *)
-    let add_formal idx (t, n) = 
-      let load_struct = L.build_load local_struct_p "" builder in
+    let add_formal (idx, struct_p) (t, n) = 
+      let load_struct = L.build_load struct_p "" builder in
       (* need to cast 0 and idx to be i32_t before passing to index array in LLVM *)
       let zero = L.const_int i32_t 0 in 
       let idxVal = L.const_int i32_t idx in
@@ -368,7 +368,7 @@ let translate (globals, functions, actors) =
       let var_stored = L.build_load var_at_idx "" builder in
       let local = L.build_alloca (ltype_of_typ t) n builder in
       ignore (L.build_store var_stored local builder);
-      local_vars := StringMap.add n local !local_vars; idx+1 in
+      local_vars := StringMap.add n local !local_vars; (idx+1, struct_p) in
     let add_local stmt = match stmt with
       | A.Vdecl (t, n) ->
          let local_var = L.build_alloca (ltype_of_typ t) n builder
@@ -378,7 +378,7 @@ let translate (globals, functions, actors) =
          in local_vars := StringMap.add v.A.vname local_var !local_vars
       | _ -> ()
     in
-    let _ = List.fold_left add_formal 0 adecl.A.aformals in
+    let _ = List.fold_left add_formal (0, local_struct_p) adecl.A.aformals in
     List.iter add_local adecl.A.alocals;
   
     (* Invoke "f builder" if the current block doesn't already
@@ -433,13 +433,15 @@ let translate (globals, functions, actors) =
 
     (* build body of msg receive loop *)
     let body_bb = L.append_block context "msg_while_body" the_function in
-
-    let build_recv_funcs builder msg_decl =
+    (* pull message off queue and store the args struct pointer on the stack, 
+       along with the message number*)
+    
+    let build_recv_funcs (builder,count) msg_decl =
       (* codegen for each recv function here *)
       ignore(L.build_alloca i32_t "temp" builder);
-      builder in
+      (builder,count+1) in
 
-    let builder = List.fold_left build_recv_funcs (L.builder_at_end context body_bb) adecl.A.receives in
+    let (builder, _) = List.fold_left build_recv_funcs ((L.builder_at_end context body_bb), 1) adecl.A.receives in
 
     ignore(L.build_br pred_bb builder); (* terminator for the while loop *)
     let pred_builder = L.builder_at_end context pred_bb in
