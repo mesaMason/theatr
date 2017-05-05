@@ -14,6 +14,8 @@ typedef struct queue {
 
 typedef struct head {
   queue_t *queue;
+  int count;
+  pthread_cond_t count_cond;/*used to signal count = 1 after count goes to 0*/ 
   pthread_mutex_t lock;
 } head;
 

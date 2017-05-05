@@ -11,6 +11,7 @@ int main() {
   enqueue(&qhead, &message2);
   retmessage = dequeue(&qhead);
   printf("%d\n",retmessage->val);
-  print_list(&qhead);
+  retmessage = dequeue(&qhead);
+  printf("%d\n",retmessage->val);
   return 0;
 }

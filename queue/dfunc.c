@@ -3,6 +3,7 @@
 /* define structs which contain the argument for the receive functions */
 typedef struct eat_arg {
   int weight;
+
 } eat_arg;
 
 typedef struct follow_me_arg {
@@ -18,8 +19,8 @@ typedef union arg {
 
 /* define the set of functions dolphin needs to execute */
 typedef union funcs {
-  void (*eat)(eat_arg);
   int  (*follow_me)(follow_me_arg);
+  void (*eat)(eat_arg);
 } dolphin_receive_funcs;
 
 /* define the message type that would be sent to a dolphin actor */
@@ -54,6 +55,7 @@ void dolphin_eat(eat_arg a) {
 
 int dolphin_follow_me(follow_me_arg a) {
   printf("dolphin is following\n");
+  return 0;
 }
 
 int main() {

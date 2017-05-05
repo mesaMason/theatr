@@ -6,10 +6,18 @@
 head initialize_queue() {
   int ret;
   head qhead;
+
   qhead.queue = NULL;
+  qhead.count = 0;
+
   ret = pthread_mutex_init(&qhead.lock, NULL);
   if (ret)
     perror("Error in initializing the queue lock");
+  
+  ret = pthread_cond_init(&qhead.count_cond, NULL);
+  if (ret)
+    perror("Error in initializing the count wait variable");
+
   return qhead;
 }
   
@@ -20,6 +28,9 @@ void enqueue(head *qhead, message_t *message) {
   new_queue->message = message;
   // initializing the qhead.queue to null ensures that the first queue entry points to null
   pthread_mutex_lock(&qhead->lock);
+  qhead->count++;
+  if (qhead->count == 1)
+    pthread_cond_signal(&qhead->count_cond);
   new_queue->next = qhead->queue; 
   qhead->queue = new_queue;
   pthread_mutex_unlock(&qhead->lock);
@@ -30,7 +41,9 @@ message_t *dequeue(head *qhead) {
   message_t *retmessage;
 
   pthread_mutex_lock(&qhead->lock);
-  if (qhead->queue == NULL) return NULL;
+  if (qhead->count == 0)
+    pthread_cond_wait(&qhead->count_cond, &qhead->lock);
+    
   current = qhead->queue;
   while (current->next != NULL) {
     prev = current;
@@ -44,15 +57,17 @@ message_t *dequeue(head *qhead) {
     prev->next = NULL;
   else
     qhead->queue = NULL;
+  
+  qhead->count--;
   pthread_mutex_unlock(&qhead->lock);
   return retmessage;
 }
 
-void print_list(head *qhead) {
-  queue_t *current = qhead->queue;
+/* void print_list(head *qhead) { */
+/*   queue_t *current = qhead->queue; */
 
-  while (current != NULL) {
-    printf("%d\n", current->message->val);
-    current = current->next;
-  }
-}
+/*   while (current != NULL) { */
+/*     printf("%d\n", current->message->val); */
+/*     current = current->next; */
+/*   } */
+/* } */
