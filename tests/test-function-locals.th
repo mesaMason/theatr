@@ -1,0 +1,15 @@
+func foo(int c) -> int:
+    int b = c + 4
+    print(b)
+    return 0
+func bar(int c) -> int:
+    int a = 42 + c
+    c = 500
+    a = a + c
+    print(a)
+    return 0
+func main() -> int:
+    int c = 0
+    foo(24)
+    bar(400)
+    return 0

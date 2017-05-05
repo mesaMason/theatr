@@ -2,6 +2,8 @@ dolphin(int weight, int age):
     print("hello from inside dolphin")
     print(weight);
     print(age)
+    int sum = weight + age
+    print(sum)
     receive:
         eat(int food):
             weight = weight + food
