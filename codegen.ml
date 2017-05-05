@@ -355,22 +355,18 @@ let translate (globals, functions, actors) =
 
         L.build_call pthread_join_func [| pthread_pt_pid ; join_attr|] "pthread_join_result" builder
 
-      | A.Call ("print", [e]) -> 
+      | A.Call ("print", [e]) | A.Call ("printb", [e]) ->
         let e1 = expr builder e in
         let typ_e = L.string_of_lltype (L.type_of e1) in
-
-        if typ_e = "i8*" then
+        
+        if typ_e = "i8*" then 
             L.build_call printf_func [| e1 |] "printf" builder
         else if typ_e = "i1" then
-            if e1 = (L.const_int i1_t 1) then 
-                let eb = format_str_str "true" in
-                L.build_call printf_func [| eb |] "printf" builder
-            else 
-                let eb = format_str_str "false" in
-                L.build_call printf_func [| eb |] "printf" builder
+            L.build_call printf_func [| format_int_str ; (expr builder e) |] "printf" builder
         else
             let format_typ_str = get_format_typ_str typ_e in
             L.build_call printf_func [| format_typ_str; e1 |] "printf" builder
+        
       | A.Call (f, act) ->
          let (fdef, fdecl) = StringMap.find f function_decls in
 	     let actuals = List.rev (List.map (expr builder) (List.rev act)) in

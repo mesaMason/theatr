@@ -1,11 +1,4 @@
 func main() -> int:
-    double d
-    d = 5.0;
-    double p 
-    p = 5.0;
-    print(d == p);
-    print(p == p);
-    print(5.0 == p);
     print(2.0 == 1.0);
     print(1.1 == 1.1);
     print(99);
@@ -15,7 +8,6 @@ func main() -> int:
     print(1.2 < 2.1);
     print(2.1 < 1.9);
     print(99);
-    print(p <= 5.0)
     print(1.5 <= 2.0);
     print(1.5 <= 1.5);
     print(2.0 <= 1.9);

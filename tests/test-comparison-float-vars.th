@@ -1,0 +1,16 @@
+func main() -> int:
+    double d
+    d = 5.0;
+    double p
+    p = 5.0;
+    print(d == p);
+    print(p == p);
+    print(5.000000 == p);
+    print(5.0 == p);
+    print(p <= 5.0)
+    print(p >= 5.0)
+    print(p != 5.0)
+    print(p != 5.000000)
+    print(p != 6.0)
+    print(d != p)
+    return 0; 
