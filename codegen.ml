@@ -298,7 +298,7 @@ let translate (globals, functions, actors) =
        let actuals = List.rev (List.map (expr builder) (List.rev act)) in
        let result = L.const_int i32_t 42 (* TODO: make this a ptr to the msg queue *) in
        (* create the actor's struct on the heap *)
-       let a_struct = L.build_malloc a_struct_type "" builder in
+       let a_struct = L.build_alloca a_struct_type "" builder in
        (* fill in the struct with actuals *)
        let index_and_store idx actual =
          let ptr = L.build_struct_gep a_struct idx "" builder in
@@ -310,7 +310,7 @@ let translate (globals, functions, actors) =
        let a_struct_ptr_casted = (match List.length actuals with
                                     0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
                                   | _ -> L.build_bitcast a_struct (L.pointer_type i8_t) "" builder) in
-       let pthread_pt = L.build_malloc i32_t "tid" builder in
+       let pthread_pt = L.build_alloca i32_t "tid" builder in
        let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
        let pthread_args = [| pthread_pt ; attr ; adef ; a_struct_ptr_casted |] in
        let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
@@ -427,6 +427,27 @@ let translate (globals, functions, actors) =
       ( A.Block [A.Expr e1 ; A.While (e2, A.Block [body ; A.Expr e3]) ] )
     in
     let builder = stmt builder (A.Block adecl.A.alocals) in
+
+    let pred_bb = L.append_block context "msg_while" the_function in
+    ignore (L.build_br pred_bb builder);
+
+    (* build body of msg receive loop *)
+    let body_bb = L.append_block context "msg_while_body" the_function in
+
+    let build_recv_funcs builder msg_decl =
+      (* codegen for each recv function here *)
+      ignore(L.build_alloca i32_t "temp" builder);
+      builder in
+
+    let builder = List.fold_left build_recv_funcs (L.builder_at_end context body_bb) adecl.A.receives in
+
+    ignore(L.build_br pred_bb builder); (* terminator for the while loop *)
+    let pred_builder = L.builder_at_end context pred_bb in
+    let bool_val = L.const_int i1_t 0 in
+    let merge_bb = L.append_block context "msg_merge" the_function in
+    ignore (L.build_cond_br bool_val body_bb merge_bb pred_builder);
+    let builder = L.builder_at_end context merge_bb in
+                     
     let ret_void_star = L.build_alloca (i8_t) "ret" builder in
     ignore(L.build_ret ret_void_star builder) in
   let _ = List.iter build_actor_thread_func_body actors in
