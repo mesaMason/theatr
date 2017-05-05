@@ -7,7 +7,7 @@ struct Books {
     int   book_id;
   int author_id;
 };
-int MAX_ACTORS = 2;
+int MAX_ACTORS = 1024;
 
 typedef struct current_actors {
   int alive;
@@ -50,7 +50,15 @@ int main()
   pthread_t tid;
   pthread_create(&tid, NULL, dolphin, &b1);
   actors[0].pid = tid;
+  sleep(1);
+  pthread_t tid2;
+  struct Books b3;
+  b3.book_id = 20;
+  b3.author_id = 55;
+  pthread_create(&tid2, NULL, dolphin, &b3);
+  actors[2].pid = tid2;
   for (int i = 0; i < MAX_ACTORS; i++) {
+    printf("Joining %d\n", actors[i].pid);
     pthread_join(actors[i].pid, NULL);
   }
   return 0;
