@@ -13,7 +13,6 @@
 /* argument would contain the queue head and dequeue function pointer */
 
 typedef struct actor_info {
-  //message_t (*dequeue)(head *qhead);
   head *qhead;
   int thread_id;
 } actor_info_t;
