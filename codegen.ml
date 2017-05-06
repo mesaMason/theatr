@@ -26,6 +26,7 @@ let translate (globals, functions, actors, structs) =
      actors that have been created *)
   let active_tids = ref [] in
 
+
   (* create message struct of 
      { int switchCase; void *functionArgumentStruct ; void *sender }     *)
   let msg_struct_type = L.named_struct_type context "msg_struct" in
@@ -33,6 +34,20 @@ let translate (globals, functions, actors, structs) =
                             [|i32_t; L.pointer_type i8_t ; L.pointer_type i8_t|]
   in
   
+
+  (* actor_address_struct contains info if actor is alive, and its msgQueue *)
+  let actor_address_struct_type  = L.named_struct_type context "actor_address_struct" in
+  let _ = L.struct_set_body actor_address_struct_type [| i32_t ; L.pointer_type i8_t |] false in
+  let arr = Array.make 1024 (L.const_int i32_t 0) in
+  let init = L.const_array actor_address_struct_type arr in 
+  let global_actors = L.define_global "global_actors" init the_module in
+
+  (* global to keep track of how many actors have been created so far 
+     NOTE: this starts at 1 *)
+  let init = L.const_int i32_t 1 in
+  let actor_count = L.define_global "actor_count" init the_module in
+
+
   let ltype_of_ptyp = function
       A.Int -> i32_t
     | A.Double -> d_t

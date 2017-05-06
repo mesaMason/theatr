@@ -16,7 +16,6 @@ typedef struct current_actors {
 } currActors;
 
 currActors actors[1024];
-
 void *dolphin2(void *ptr) {
   struct Books *bk = ptr;
   int bookid = bk->book_id;
@@ -24,7 +23,7 @@ void *dolphin2(void *ptr) {
   free(bk);
   printf("My book_id is %d\n", bookid);
   printf("My author_id is %d\n", authorid);
-  return;
+  return NULL;
 }
 
 void *dolphin(void *ptr)
