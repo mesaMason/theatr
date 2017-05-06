@@ -1,0 +1,10 @@
+func main() -> int:
+    print("hello")
+/* print("dont print this")
+print("dont print this")
+print("dont print this") */
+    print("hello")
+    /* print("dont print this") */
+/* print("dont print this")
+print("dont print this")
+*/
