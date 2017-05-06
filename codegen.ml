@@ -328,6 +328,10 @@ let translate (globals, functions, actors, structs) =
        let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
        active_tids := pthread_pt :: !active_tids;
        result
+    | A.Send (msgFunction, msgArgs, recipientName) ->
+       let result = L.const_int i32_t 42 (* TODO: fill out send code *) in
+       result
+                                
   in
 
 

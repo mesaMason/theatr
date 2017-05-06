@@ -25,6 +25,7 @@ rule token = parse
 | "actor"  { ACTOR }
 | "struct" { STRUCT }
 | '.'      { DOT }
+| '|'      { PIPE }
 | ':'      { COLON }
 | ';'      { SEMI }
 | ','      { COMMA }
