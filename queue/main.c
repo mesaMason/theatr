@@ -1,7 +1,6 @@
 /*
   To run this code do: 
   gcc -c queue.c && gcc -c main.c && gcc -o main main.o queue.o -lpthread && ./main 
-
 */
 
 #include <stdio.h>
