@@ -9,7 +9,7 @@ typedef struct message {
 
 typedef struct queue {
   struct queue *next;
-  message_t *message;
+  message_t message;
 } queue_t;
 
 typedef struct head {
@@ -21,9 +21,9 @@ typedef struct head {
 
 head initialize_queue();
 
-void enqueue(head *qhead, message_t *message);
+void enqueue(head *qhead, message_t message);
 
-message_t *dequeue(head *qhead);
+message_t dequeue(head *qhead);
 
 void print_list(head *qhead);
 

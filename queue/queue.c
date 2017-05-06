@@ -21,7 +21,7 @@ head initialize_queue() {
   return qhead;
 }
   
-void enqueue(head *qhead, message_t *message) {
+void enqueue(head *qhead, message_t message) {
   queue_t *new_queue = malloc(sizeof(queue_t));
   if (!new_queue) return;
 
@@ -36,14 +36,14 @@ void enqueue(head *qhead, message_t *message) {
   pthread_mutex_unlock(&qhead->lock);
 }
 
-message_t *dequeue(head *qhead) {
+message_t dequeue(head *qhead) {
   queue_t *current, *prev = NULL;
-  message_t *retmessage;
+  message_t retmessage;
 
   pthread_mutex_lock(&qhead->lock);
-  if (qhead->count == 0)
+  while (qhead->count == 0){
     pthread_cond_wait(&qhead->count_cond, &qhead->lock);
-    
+  }
   current = qhead->queue;
   while (current->next != NULL) {
     prev = current;
@@ -62,12 +62,3 @@ message_t *dequeue(head *qhead) {
   pthread_mutex_unlock(&qhead->lock);
   return retmessage;
 }
-
-/* void print_list(head *qhead) { */
-/*   queue_t *current = qhead->queue; */
-
-/*   while (current != NULL) { */
-/*     printf("%d\n", current->message->val); */
-/*     current = current->next; */
-/*   } */
-/* } */
