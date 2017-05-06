@@ -21,7 +21,9 @@ rule token = parse
 | "->"     { FUNC_ARROW }
 | "func"   { FUNC_DECL }
 | "new"    { NEW }
-| "actor"  { ACTOR } 
+| "actor"  { ACTOR }
+| "struct" { STRUCT }
+| '.'      { DOT }
 | ':'      { COLON }
 | ';'      { SEMI }
 | ','      { COMMA }
@@ -52,6 +54,7 @@ rule token = parse
 | "void"   { VOID }
 | "true"   { TRUE }
 | "false"  { FALSE }
+| "string" { STRING }
 | ['0'-'9']+ as lxm { INTLIT(int_of_string lxm) }
 | double as lxm { DOUBLELIT(float_of_string lxm) }
 | '"' str '"' { STRINGLIT(s) }

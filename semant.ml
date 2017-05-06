@@ -9,7 +9,7 @@ module StringMap = Map.Make(String)
 
    Check each global variable, then check each function *)
 
-let check (globals, functions, actors) =
+let check (globals, functions, actors, structs) =
 
   (* Raise an exception if the given list has a duplicate *)
   let report_duplicate exceptf list =
@@ -49,8 +49,20 @@ let check (globals, functions, actors) =
 
   let actor_decl s = try StringMap.find s actor_decls
         with Not_found -> raise (Failure ("unrecognized actor " ^ s))
-  in 
+  in
 
+  (**** Checking Structs ****)
+  report_duplicate (fun n -> "duplicate struct " ^ n)
+                   (List.map (fun sn -> sn.name) structs);
+
+  let struct_decls = List.fold_left (fun m sd -> StringMap.add sd.name sd m)
+                                    StringMap.empty structs
+  in
+  
+  let find_struct_decl s = try StringMap.find s struct_decls with
+                        Not_found -> raise (Failure ("unrecognized struct " ^ s))
+  in
+  
   (**** Checking Global Variables ****)
 
   List.iter (check_not_void (fun n -> "illegal void global " ^ n)) globals;
@@ -222,6 +234,7 @@ let check (globals, functions, actors) =
          symbols := StringMap.add vdef.vname vdef.vtyp !symbols;
 	 check_not_void (fun n -> "illegal void local: " ^ n) (vdef.vtyp, vdef.vname);
          ignore(vdef)
+      | Sdef sdef -> ignore(find_struct_decl sdef.styp);
       | Return e -> let t = expr e in if t = func.typ then () else
          raise (Failure ("return gives " ^ string_of_typ t ^ " expected " ^
                          string_of_typ func.typ ^ " in " ^ string_of_expr e))

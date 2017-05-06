@@ -1,0 +1,22 @@
+struct my_struct: 
+    actor my_actor
+    int wealth
+
+dolphin(int weight, int length):
+    struct matt = new my_struct
+    int foo = 4
+    foo = foo + 5
+    receive:
+        eat(int num):
+            weight = weight + num
+        swim(int num):
+            length = length + num
+    drop:
+        weight = weight + 1
+        return
+    after:
+        int time
+
+func main() -> int:
+    print("Hello world!")
+    return 0

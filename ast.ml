@@ -5,13 +5,18 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type ptyp = Int | Bool | Double | Void | String | Actor
+type ptyp = Int | Bool | Double | Void | Actor | String
 
 type ctyp = List | Array
 
 type typ = Ptyp of ptyp | Ctyp of ctyp * ptyp
   
 type bind = typ * string
+
+type sdecl = {
+    name : string;
+    elements : bind list
+  }
 
 type expr =
     IntLit of int
@@ -33,12 +38,19 @@ type vdef = {
     vname : string;
     vvalue : expr;
   }
-              
+
+type sdef  = {
+    sname : string;
+    styp : string;
+    svalue : vdef list;
+  }
+               
 type stmt =
     Block of stmt list
   | Expr of expr
   | Vdecl of bind
   | Vdef of vdef
+  | Sdef of sdef
   | Return of expr
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
@@ -69,8 +81,10 @@ type actor_decl = {
     drop : drop_after_decl;
     after : drop_after_decl;
   }
-		   
-type program = bind list * func_decl list * actor_decl list
+
+  
+(* a struct can only be defined in a global context just like actor or functions*)	
+type program = bind list * func_decl list * actor_decl list * sdecl list
 
 (* Pretty-printing functions *)
 
@@ -108,16 +122,16 @@ let rec string_of_expr = function
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | NewActor(a, el) ->
-      "new" ^ a ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+     "new" ^ a ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
 
 let string_of_ptyp = function
     Int -> "int"
-  | String -> "string"
   | Bool -> "bool"
   | Void -> "void"
   | Actor -> "actor"
   | Double -> "double"
+  | String -> "string"
 
 let string_of_ctyp = function
     List -> "list"
@@ -138,6 +152,7 @@ let rec string_of_stmt = function
   | Expr(expr) -> string_of_expr expr ^ ";\n"
   | Vdecl((t, id)) -> string_of_vdecl (t, id) ^ "\n";
   | Vdef(vdef) -> string_of_vdef vdef ^ ";\n"
+  | Sdef(sdef) -> "struct " ^ sdef.sname ^ " = new " ^ sdef.styp ^ "()\n"
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
   | If(e, s, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
   | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
@@ -171,7 +186,11 @@ let string_of_adecl adecl =
   "\nafter:\n" ^ String.concat "" (List.map string_of_stmt adecl.after.dabody) ^
   "}\n"
 
-let string_of_program (vars, funcs, actors) =
+let string_of_sdecl sdecl =
+  "struct " ^ sdecl.name ^ " {\n" ^  String.concat "\n" (List.map string_of_vdecl sdecl.elements) ^ "\n}" 
+
+let string_of_program (vars, funcs, actors, structs) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
-  String.concat "\n" (List.map string_of_adecl actors) ^ "\n"
+  String.concat "\n" (List.map string_of_adecl actors) ^ "\n" ^
+  String.concat "\n" (List.map string_of_sdecl structs) ^ "\n"

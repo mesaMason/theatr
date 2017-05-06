@@ -10,8 +10,8 @@ open Ast
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
 %token RETURN IF ELSE FOR WHILE INT DOUBLE BOOL VOID
 %token RECEIVE DROP AFTER
-%token NEW ACTOR
-%token LIST ARRAY
+%token NEW ACTOR STRUCT DOT
+%token LIST ARRAY STRING
 %token <int> INTLIT
 %token <float> DOUBLELIT
 %token <string> STRINGLIT
@@ -38,10 +38,11 @@ program:
   decls EOF { $1 }
 
 decls:
-   /* nothing */ { [], [], [] }
- | decls vdecl { match $1 with (vars,funcs,actors) -> (($2 :: vars), funcs, actors) }
- | decls fdecl { match $1 with (vars,funcs,actors) -> (vars, ($2 :: funcs), actors) }
- | decls adecl { match $1 with (vars,funcs,actors) -> (vars, funcs, ($2 :: actors)) }
+   /* nothing */ { [], [], [], [] }
+ | decls vdecl { match $1 with (vars,funcs,actors,structs) -> (($2 :: vars), funcs, actors, structs) }
+ | decls fdecl { match $1 with (vars,funcs,actors,structs) -> (vars, ($2 :: funcs), actors, structs) }
+ | decls adecl { match $1 with (vars,funcs,actors,structs) -> (vars, funcs, ($2 :: actors), structs) }
+ | decls sdecl { match $1 with (vars,funcs,actors,structs) -> (vars, funcs, actors, ($2 :: structs)) }
 
 /* actor declaration
 LBRACE and RBRACE: these will be inserted by the preprocessor
@@ -85,6 +86,10 @@ after:
     | AFTER COLON LBRACE stmt_list RBRACE
       { { dabody = List.rev $4 } }
 
+sdecl:
+   STRUCT ID COLON LBRACE vdecl_list RBRACE
+   { { name = $2; elements = $5 } }
+
 fdecl:
    FUNC_DECL ID LPAREN formals_opt RPAREN FUNC_ARROW typ COLON LBRACE stmt_list RBRACE
      { { typ = $7;
@@ -106,6 +111,7 @@ ptyp:
   | BOOL { Bool }
   | VOID { Void }
   | ACTOR { Actor }
+  | STRING { String }
 
 ctyp:
     LIST { List }
@@ -130,6 +136,7 @@ stmt:
     expr SEMI { Expr $1 }
   | typ ID SEMI   { Vdecl($1, $2) }
   | typ ID ASSIGN expr SEMI { Vdef({ vtyp = $1; vname = $2; vvalue = Assign($2, $4) }) }
+  | STRUCT ID ASSIGN NEW ID SEMI { Sdef({ sname = $2; styp = $5; svalue = []}) }
   | RETURN SEMI { Return Noexpr }
   | RETURN expr SEMI { Return $2 }
   | LBRACE stmt_list RBRACE { Block(List.rev $2) }

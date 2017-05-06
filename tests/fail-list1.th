@@ -1,0 +1,5 @@
+func main() -> int:
+    list<int> a;
+    a = 5;
+    print(a);
+    return 0
