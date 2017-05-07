@@ -1,0 +1,6 @@
+func main() -> int:
+    int i;
+
+    i = 42;
+    return i
+    i = 32 /* Error: code after a return */

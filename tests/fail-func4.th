@@ -1,0 +1,15 @@
+func foo() -> int:
+    return 0
+
+func bar() -> int:
+    return 0
+
+func print() -> int:
+    return 0
+    /* Should not be able to define print */
+
+func baz() -> int:
+    return 0
+
+func main() -> int:
+    return 0

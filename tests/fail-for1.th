@@ -1,0 +1,7 @@
+func main() -> int:
+    int i
+    for (i = 0; i < 5; i = i+1):
+        print("hello!")
+    for (j = 0; i < 5; i = i+1): /* undefined j */
+        // do nothing
+    return 0

@@ -1,0 +1,8 @@
+int i
+bool b
+
+func foo(int c, bool d) -> int:
+    (i+b)
+
+func main() -> int:
+    return 0    
