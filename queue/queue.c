@@ -3,18 +3,18 @@
 #include <pthread.h>
 #include "queue.h"
 
-head initialize_queue() {
+head *initialize_queue() {
   int ret;
-  head qhead;
+  head *qhead = (head *)malloc(sizeof(head));
 
-  qhead.queue = NULL;
-  qhead.count = 0;
+  qhead->queue = NULL;
+  qhead->count = 0;
 
-  ret = pthread_mutex_init(&qhead.lock, NULL);
+  ret = pthread_mutex_init(&qhead->lock, NULL);
   if (ret)
     perror("Error in initializing the queue lock");
   
-  ret = pthread_cond_init(&qhead.count_cond, NULL);
+  ret = pthread_cond_init(&qhead->count_cond, NULL);
   if (ret)
     perror("Error in initializing the count wait variable");
 
@@ -26,7 +26,6 @@ void enqueue(head *qhead, message_t message) {
   if (!new_queue) return;
 
   new_queue->message = message;
-  // initializing the qhead.queue to null ensures that the first queue entry points to null
   pthread_mutex_lock(&qhead->lock);
   qhead->count++;
   if (qhead->count == 1)
@@ -62,3 +61,4 @@ message_t dequeue(head *qhead) {
   pthread_mutex_unlock(&qhead->lock);
   return retmessage;
 }
+/* we are not deallocating the queue. The programmer is supposed to take care of that. */  
