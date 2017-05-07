@@ -43,8 +43,9 @@ let translate (globals, functions, actors, structs) =
   let init = L.const_array actor_address_struct_type arr in 
   let global_actors = L.define_global "global_actors" init the_module in
 
-  (* global to keep track of how many actors have been created so far *)
-  let init = L.const_int i32_t 0 in
+  (* global to keep track of how many actors have been created so far 
+     start the index at 1 because the main function gets the 0th position *)
+  let init = L.const_int i32_t 1 in 
   let actor_count = L.define_global "actor_count" init the_module in
 
 
@@ -326,29 +327,26 @@ let translate (globals, functions, actors, structs) =
        let a_struct_type = StringMap.find a actor_struct_types in
        let actuals = List.rev (List.map (expr builder) (List.rev act)) in
 
-       (* malloc an actor_address_struc to hold actor tid, alive/dead, msg queue *)
-       let addr_struct = L.build_malloc actor_address_struct_type (a^"_addr_struct") builder in
+       (* get position in global actors array *)
+       let curr_actor_count = L.build_load actor_count "curr_actor_count" builder in
+       let zero = L.const_int i32_t 0 in
+       let addr_struct = L.build_in_bounds_gep global_actors
+                         [| zero ; curr_actor_count |] "pos" builder in
        let alive = L.build_struct_gep addr_struct 0 "" builder in
        let _ = L.build_store (L.const_int i32_t 1) alive builder in
        let tid_in_struct = L.build_struct_gep addr_struct 1 "" builder in
        let msgQueue = L.build_struct_gep addr_struct 2 "" builder in
-       (* do a build_store to put the msg queue pointer into msgQueue *)
+       (* TODO: do a build_store to put the msg queue pointer into msgQueue *)
        let result = addr_struct in
-
-       (* store the newly created struct in the global array *)
-       let curr_actor_count = L.build_load actor_count "curr_actor_count" builder in
-       let zero = L.const_int i32_t 0 in
-       let global_array_pos = L.build_in_bounds_gep global_actors
-                              [| zero ; curr_actor_count |] "pos" builder in
-       (*let addr_struct_p = L.build_load addr_struct "" builder in*)
-       let _ = L.build_store addr_struct global_array_pos builder in
        
        (* increment actor count *)
        let new_actor_count = L.build_add curr_actor_count (L.const_int i32_t 1) "" builder in
        let _ = L.build_store new_actor_count actor_count builder in
 
-       (* create the actor's function argument struct on the heap *)
-       let a_struct = L.build_alloca a_struct_type "" builder in
+       (* create the actor's function argument struct on the heap 
+          this will be freed by the actor's pthread function after the args are 
+          copied onto that thread's stack *)
+       let a_struct = L.build_malloc a_struct_type "" builder in
        (* fill in the struct with actuals *)
        let index_and_store idx actual =
          let ptr = L.build_struct_gep a_struct idx "" builder in
@@ -379,18 +377,6 @@ let translate (globals, functions, actors, structs) =
   let build_actor_thread_func_body adecl =
     let (the_function, _) = StringMap.find adecl.A.aname actor_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
-    (*
-    let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder
-    and format_double_str = L.build_global_stringptr "%f\n" "fmt" builder in
-    let format_str_str s = L.build_global_stringptr (s^"\n") "fmt" builder in
-
-    let get_format_typ_str typ =
-        match typ with
-      | "i32" -> format_int_str
-      | "double" -> format_double_str
-      | _    -> raise (Failure("invalid type passed to print, "^typ))
-    in
-     *)
     (* Construct the thread function's "locals": 
        Since this function is passed into pthread, it will have to 
        create a struct pointer that matches its arguments and dereference 
@@ -436,6 +422,7 @@ let translate (globals, functions, actors, structs) =
     in
     let _ = List.fold_left add_formal (0, local_struct_p) adecl.A.aformals in
     List.iter add_local adecl.A.alocals;
+    L.build_free voidp builder; (* free the malloc'd function arguments struct *)
   
     (* Invoke "f builder" if the current block doesn't already
        have a terminal (e.g., a branch). *)
@@ -588,12 +575,11 @@ let translate (globals, functions, actors, structs) =
              let builder = L.builder_at_end context body_bb in
              let idx = L.build_load i "idx" builder in
              let zero = L.const_int i32_t 0 in
-             let global_array_pos = L.build_in_bounds_gep
-                                    global_actors [| zero ; idx |] "pos" builder in
-             let addr_struct = L.build_load global_array_pos "addr_struct" builder in
-             let tid_p = L.build_struct_gep addr_struct 2 "tid_p" builder in
-             (*let tid_p_cast = L.build_bitcast tid_p (L.pointer_type i32_t) "" builder in*)
-             let tid_val = L.build_load tid_p "tid_val" builder in
+             let addr_struct = L.build_in_bounds_gep global_actors
+                                    [| zero ; idx |] "pos" builder in
+             let tid_p = L.build_struct_gep addr_struct 1 "tid_p" builder in
+             let tid_p_cast = L.build_bitcast tid_p (L.pointer_type i32_t) "" builder in
+             let tid_val = L.build_load tid_p_cast "tid_val" builder in
              let join_attr = L.const_bitcast (L.const_pointer_null i8_t)
                              (L.pointer_type (L.pointer_type i8_t)) in
              L.build_call pthread_join_func [| tid_val ; join_attr |] "pthread_join_result" builder;
@@ -604,17 +590,6 @@ let translate (globals, functions, actors, structs) =
              let merge_bb = L.append_block context "merge" the_function in
              ignore (L.build_cond_br bool_val body_bb merge_bb pred_builder);
              L.builder_at_end context merge_bb
-(*
-             let build_pthread_join builder tid_ptr =
-               let local_tid_ptr = L.build_alloca (L.pointer_type i32_t) "" builder in
-               let _ = L.build_store tid_ptr local_tid_ptr builder in
-               let tid_val = L.build_load local_tid_ptr "tid" builder in
-               let tid_val = L.build_load tid_val "tid" builder in
-               let join_attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type (L.pointer_type i8_t)) in
-               L.build_call pthread_join_func [| tid_val ; join_attr |] "pthread_join_result" builder; builder
-             in
-             List.fold_left build_pthread_join builder !active_tids; builder
- *)
            else
              builder
          in
