@@ -1,0 +1,31 @@
+dolphin(int weight, int age):
+    print("dolphin here")
+    print(weight)
+    print(age)
+    actor baby = new babyDolphin(weight*2, age*2)
+    receive:
+        eat(int food):
+            weight = weight + food
+        growOld(int time):
+            age = age + time
+        eatAndGrowOld(int food, int time):
+            weight = weight + food
+            age = age + time
+    drop:
+        return
+        
+babyDolphin(int weight, int age):
+    print("baby dolphin here")
+    print(weight)
+    print(age)
+    receive:
+        eat(int food):
+            weight = weight + food
+    drop:
+        return
+
+func main() -> int:
+    int weight = 100
+    int age = 3
+    actor d = new dolphin(weight, age)
+    return 0

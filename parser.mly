@@ -11,6 +11,7 @@ open Ast
 %token RETURN IF ELSE FOR WHILE INT DOUBLE BOOL VOID
 %token RECEIVE DROP AFTER
 %token NEW ACTOR STRUCT DOT
+%token PIPE
 %token LIST ARRAY STRING
 %token <int> INTLIT
 %token <float> DOUBLELIT
@@ -177,6 +178,7 @@ expr:
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
   | LPAREN expr RPAREN { $2 }
   | NEW ID LPAREN actuals_opt RPAREN { NewActor($2, $4) }
+  | ID LPAREN actuals_opt RPAREN PIPE ID { Send($1, $3, $6) }
 
 actuals_opt:
     /* nothing */ { [] }
