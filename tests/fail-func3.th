@@ -1,0 +1,5 @@
+func bar(int a, void b, int c) -> void:
+    print("second bar with void return");
+
+func main() -> int:
+    return 0

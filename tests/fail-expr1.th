@@ -1,0 +1,5 @@
+func foo(int a, bool b) -> int:
+    (a+b)
+
+func main() -> int:
+    return 0    

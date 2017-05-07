@@ -53,24 +53,28 @@ let translate (globals, functions, actors, structs) =
     match typ with
     | "double"    -> L.build_fadd
     | "i32"       -> L.build_add
+    | _           -> raise (Failure("incompatible type passed to addition operation: " ^typ))
   in
    
   let handle_subtraction typ =
     match typ with
     | "double"    -> L.build_fsub
     | "i32"       -> L.build_sub
+    | _           -> raise (Failure("incompatible type passed to subtraction operation: " ^typ))
   in
   
   let handle_mult typ = 
     match typ with
     | "double"    -> L.build_fmul
     | "i32"       -> L.build_mul
+    | _           -> raise (Failure("incompatible type passed to multiplication operation: " ^typ))
   in
   
   let handle_div typ = 
     match typ with
     | "double"    -> L.build_fdiv
     | "i32"       -> L.build_sdiv
+    | _           -> raise (Failure("incompatible type passed to division operation: " ^typ))
   in  
   
   let handle_arith_binop op typ1 typ2 =
@@ -81,6 +85,7 @@ let translate (globals, functions, actors, structs) =
       | A.Sub   -> handle_subtraction typ1
       | A.Mult  -> handle_mult typ1
       | A.Div   -> handle_div typ1
+      | _       -> raise (Failure("incompatible type passed to arithmetic operation: " ^typ1))
     )
     | _     -> raise (Failure("incompatible types passed to arithmetic operation: " ^typ1 ^typ2))    
   in
