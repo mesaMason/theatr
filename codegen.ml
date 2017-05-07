@@ -122,6 +122,64 @@ let translate (globals, functions, actors, structs) =
     | _             -> raise (Failure("incompatible types passed to comparison operation: " ^typ1 ^typ2))
   in
 
+      (* let list_arg_types = List.map (fun (t,_) -> ltype_of_typ t) adecl.A.aformals in *)
+      (* let type_array = Array.of_list list_arg_types in *)
+      (* let name = adecl.A.aname in *)
+      (* let struct_type = L.named_struct_type context (name ^ "_struct") in *)
+      (* let _ = L.struct_set_body struct_type type_array false in *)
+      (* StringMap.add name struct_type m in *)
+
+  let struct_decls = 
+    let struct_t m sd =
+      let list_arg_types = List.map (fun (t,_)-> ltype_of_typ t) sd.A.elements in
+      let type_array = Array.of_list list_arg_types in
+      let name = sd.A.name in
+      let struct_type = L.named_struct_type context ("struct_" ^ name) in
+      let _ = L.struct_set_body struct_type type_array false in
+      StringMap.add sd.A.name struct_type m in
+    List.fold_left struct_t StringMap.empty structs in
+
+  (* define struct types for queue related functions *)
+  let struct_message_t = L.named_struct_type context "struct.message" in
+  let _ = L.struct_set_body struct_message_t [| L.i32_type context ; L.pointer_type i8_t ; L.pointer_type i8_t |] false in
+
+  let struct_queue_t = L.named_struct_type context "struct.queue" in
+  ignore(L.struct_set_body struct_queue_t [| L.pointer_type struct_queue_t ; struct_message_t |] false);
+
+  let struct_head_t = L.named_struct_type context "struct.head" in
+  let _ =
+    let struct_anon_t = L.named_struct_type context "struct.anon" in
+    ignore(L.struct_set_body struct_anon_t [| L.i32_type context ; L.i32_type context ; L.i64_type context ; L.i64_type context ; L.i64_type context ; L.pointer_type i8_t ; L.i32_type context ; L.i32_type context |]);
+    
+    let union_pthread_cond_t = L.named_struct_type context "union.pthread_cond_t" in
+    ignore(L.struct_set_body union_pthread_cond_t [| struct_anon_t ; L.array_type (L.pointer_type i8_t) 4 |]);
+    
+    let struct__pthread_internal_slist = L.named_struct_type context "struct.__pthread_internal_slist" in
+    ignore(L.struct_set_body struct__pthread_internal_slist [| L.pointer_type struct__pthread_internal_slist |]);
+    
+    let union_anon_t = L.named_struct_type context "union.anon" in
+    ignore(L.struct_set_body union_anon_t [| struct__pthread_internal_slist |]);
+    
+    let struct___pthread_mutex_s_t = L.named_struct_type context "struct.__pthread_mutex_s"  in
+    ignore(L.struct_set_body struct___pthread_mutex_s_t [| L.i32_type context ; L.i32_type context ; L.i32_type context ; L.i32_type context ; L.i32_type context ; union_anon_t |]);
+
+    let union_pthread_mutex_t_t = L.named_struct_type context "union.pthread_mutex_t" in
+    ignore(L.struct_set_body union_pthread_mutex_t_t [| struct___pthread_mutex_s_t |]);
+
+    ignore(L.struct_set_body struct_head_t [| L.pointer_type struct_queue_t ; union_pthread_cond_t ; union_pthread_mutex_t_t |]);
+  in
+
+  let initialize_queue_t = L.function_type (L.pointer_type struct_head_t) [||] in
+  let initialize_queue_func = L.declare_function "initialize_queue" initialize_queue_t the_module in
+
+  let enqueue_t = L.function_type (L.void_type context) [| L.pointer_type struct_head_t ; i32_t ; L.pointer_type i8_t ; L.pointer_type i8_t |] in
+  let enqueue_func = L.declare_function "enqueue" enqueue_t the_module in
+
+  let dequeue_t = L.function_type (L.void_type context) [| L.pointer_type struct_message_t ; L.pointer_type struct_head_t |] in
+  let dequeue_func = L.declare_function "dequeue" dequeue_t the_module in
+
+  let llvm_memcpy_t = L.function_type (L.void_type context) [| L.pointer_type i8_t ; L.pointer_type i8_t ; i32_t ; i32_t ; i1_t |] in
+  let llvm_memcpy = L.declare_function "llvm_memcpy" llvm_memcpy_t the_module in
 
   (* Declare each global variable; remember its value in a map *)
   let global_vars =

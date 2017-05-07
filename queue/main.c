@@ -38,13 +38,13 @@ void *enqueue_actor(void *t) {
 
 int main() {
   int i, rc;
-  head qhead = initialize_queue();
+  head *qhead = initialize_queue();
   pthread_t taskids[NUM_THREADS+1];
   actor_info_t actor_data_array[NUM_THREADS+1];
   
   for (i = 0; i < NUM_THREADS+1; i++) {
 
-    actor_data_array[i].qhead = &qhead;
+    actor_data_array[i].qhead = qhead;
     actor_data_array[i].thread_id = i;
 
     if (i == 0)
@@ -60,6 +60,7 @@ int main() {
 
   for (i = 0; i < NUM_THREADS+1; i++)
     pthread_join(taskids[i], NULL);
+  
     
   return 0;
 }
