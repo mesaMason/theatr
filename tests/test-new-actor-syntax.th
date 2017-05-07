@@ -4,7 +4,14 @@ dolphin(int weight, int age):
     receive:
         eat(int food):
             weight = weight + food
+        growOld(int time):
+            age = age + time
+        eatAndGrowOld(int food, int time):
+            weight = weight + food
+            age = age + time
     drop:
+        print(weight)
+        print(age)
         return;
     after:
         return;

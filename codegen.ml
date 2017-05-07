@@ -26,6 +26,13 @@ let translate (globals, functions, actors, structs) =
      actors that have been created *)
   let active_tids = ref [] in
 
+  (* create message struct of 
+     { int switchCase; void *functionArgumentStruct ; void *sender }     *)
+  let msg_struct_type = L.named_struct_type context "msg_struct" in
+  let _ = L.struct_set_body msg_struct_type
+                            [|i32_t; L.pointer_type i8_t ; L.pointer_type i8_t|]
+  in
+  
   let ltype_of_ptyp = function
       A.Int -> i32_t
     | A.Double -> d_t
@@ -434,9 +441,21 @@ let translate (globals, functions, actors, structs) =
 
     (* build body of msg receive loop *)
     let body_bb = L.append_block context "msg_while_body" the_function in
+
     (* pull message off queue and store the args struct pointer on the stack, 
        along with the message number*)
-    
+    let builder = L.builder_at_end context body_bb in
+    (* TODO: here we add calls to dequeue the next msg from msgqueue *)
+    let msgp = L.build_alloca i8_t "" builder  in (* TODO: replace this with actual msg pointer *)
+    let _ = L.set_value_name "msg_ptr" msgp in
+    let local_msgp = L.build_alloca (L.pointer_type i8_t) "local_msg_p" builder in
+    let _ = L.build_store msgp local_msgp builder in
+    let local_msg_struct_p = L.build_alloca (L.pointer_type msg_struct_type) "msg_struct_p" builder in
+    let loaded_msgp = L.build_load local_msgp "" builder in
+    let casted_msgp = L.build_bitcast loaded_msgp (L.pointer_type msg_struct_type) "" builder in
+    ignore(L.build_store casted_msgp local_msg_struct_p builder);
+    (* FOR SWITCH STATEMENTS: local_msg_struct_p is a pointer to the message struct *)
+
     let build_recv_funcs (builder,count) msg_decl =
       (* codegen for each recv function here *)
       ignore(L.build_alloca i32_t "temp" builder);
@@ -446,7 +465,7 @@ let translate (globals, functions, actors, structs) =
 
     ignore(L.build_br pred_bb builder); (* terminator for the while loop *)
     let pred_builder = L.builder_at_end context pred_bb in
-    let bool_val = L.const_int i1_t 0 in
+    let bool_val = L.const_int i1_t 0 in (* TODO: change i1_t to 1 to make it loop *)
     let merge_bb = L.append_block context "msg_merge" the_function in
     ignore (L.build_cond_br bool_val body_bb merge_bb pred_builder);
     let builder = L.builder_at_end context merge_bb in
