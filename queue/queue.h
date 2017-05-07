@@ -5,6 +5,8 @@
 
 typedef struct message {
   int val;
+  void *argumentStruct;
+  void *sender;
 } message_t;
 
 typedef struct queue {
@@ -19,12 +21,14 @@ typedef struct head {
   pthread_mutex_t lock;
 } head;
 
-head initialize_queue();
+head *initialize_queue();
+
+void dealloc_queue(head *);
 
 void enqueue(head *qhead, message_t message);
 
 message_t dequeue(head *qhead);
 
-void print_list(head *qhead);
+/* void print_list(head *qhead); */
 
 #endif
