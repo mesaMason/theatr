@@ -61,9 +61,6 @@ def remove_comments(content):
 			return s
 	comment_pattern = re.compile(
 		r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"',
-		#r"""
-        #//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"
-        #""",
         re.DOTALL | re.MULTILINE
 	)
 	return re.sub(comment_pattern, replacer, content)
