@@ -147,7 +147,7 @@ let check (globals, functions, actors, structs) =
         | _ -> raise (Failure ("illegal binary operator " ^
               string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
               string_of_typ t2 ^ " in " ^ string_of_expr e
-              ^ ". e1: " ^ string_of_expr e1 ^ "e2: " ^ string_of_expr e2
+              ^ "."
               ))
         )
       | Unop(op, e) as ex -> let t = expr e in
