@@ -11,6 +11,7 @@ let str = (letter | digit | punct)* as s
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
 | "/*"     { comment lexbuf }           (* Comments *)
+| "//"     { single_line_comment lexbuf }
 | '('      { LPAREN }
 | ')'      { RPAREN }
 | '{'      { LBRACE }
@@ -65,3 +66,8 @@ rule token = parse
 and comment = parse
   "*/" { token lexbuf }
 | _    { comment lexbuf }
+
+and single_line_comment = parse
+| '\n'  { token lexbuf }
+| _     { single_line_comment lexbuf }
+

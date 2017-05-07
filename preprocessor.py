@@ -52,13 +52,29 @@ def update_stack(stack, new_point, result):
     # print(stack)
     # print("\n")
 
+def remove_comments(content):
+	def replacer(match):
+		s = match.group(0)
+		if s.startswith('/'):
+			return " "
+		else:
+			return s
+	comment_pattern = re.compile(
+		r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"',
+        re.DOTALL | re.MULTILINE
+	)
+	return re.sub(comment_pattern, replacer, content)
+
 def preprocess(filename, fileout):
 	"""
 	input: filename to be preprocessor
 	output: filename.out file with braces and semicolons inserted at the end of statement
 	"""
 	f = open(filename,'r')
+	
 	content = f.read()
+	
+	content = remove_comments(content)
 	f.close()
 	content = re.sub(r'\n\s*\n', '\n', content)
 	content = re.sub(r' *\n', '\n', content)
