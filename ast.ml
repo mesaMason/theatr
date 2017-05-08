@@ -5,7 +5,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type ptyp = Int | Bool | Double | Void | Actor | String
+type ptyp = Int | Bool | Double | Void | Actor | String | Char
 
 type ctyp = List | Array
 
@@ -22,6 +22,7 @@ type expr =
     IntLit of int
   | DoubleLit of float
   | StringLit of string
+  | CharLit of char
   | BoolLit of bool
   | ListC of expr list
   | ArrayC of expr list
@@ -111,6 +112,7 @@ let rec string_of_expr = function
     IntLit(l) -> string_of_int l
   | DoubleLit(f) -> string_of_float f
   | StringLit(s) -> s
+  | CharLit(c)   -> Char.escaped c
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
   | Id(s) -> s
@@ -133,6 +135,7 @@ let string_of_ptyp = function
   | Actor -> "actor"
   | Double -> "double"
   | String -> "string"
+  | Char    -> "char"
 
 let string_of_ctyp = function
     List -> "list"
