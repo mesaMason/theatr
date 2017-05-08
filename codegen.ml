@@ -7,6 +7,9 @@ Detailed documentation on the OCaml LLVM library:
 http://llvm.moe/
 http://llvm.moe/ocaml/
 *)
+open Llvm.MemoryBuffer
+open Llvm_bitreader
+
 module L = Llvm
 module A = Ast
 
@@ -196,7 +199,7 @@ let translate (globals, functions, actors, structs) =
     ignore(L.struct_set_body struct_head_t [| L.pointer_type struct_queue_t ; union_pthread_cond_t ; union_pthread_mutex_t_t |]);
   in
 
-  let initialize_queue_t = L.function_type (L.pointer_type struct_head_t) [||] in
+  let initialize_queue_t = L.var_arg_function_type (L.pointer_type struct_head_t) [||] in
   let initialize_queue_func = L.declare_function "initialize_queue" initialize_queue_t the_module in
 
   let enqueue_t = L.function_type (L.void_type context) [| L.pointer_type struct_head_t ; i32_t ; L.pointer_type i8_t ; L.pointer_type i8_t |] in
@@ -919,4 +922,11 @@ let translate (globals, functions, actors, structs) =
                           | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
   in
   List.iter build_function_body functions;
+  let linker filename =
+    let llctx = Llvm.global_context () in
+    let llmem = Llvm.MemoryBuffer.of_file filename in
+    let llm = Llvm_bitreader.parse_bitcode llctx llmem in
+    ignore(Llvm_linker.link_modules the_module llm)
+  in
+  linker "queue/queue.bc";
   the_module
