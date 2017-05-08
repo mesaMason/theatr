@@ -588,44 +588,40 @@ let translate (globals, functions, actors, structs) =
     in
 
     (* Returns list of msg blocks *)
-    let build_msg_blocks continue_bb exit_bb = 
-        (* Returns msg block that branches to continue_bb (i.e. continues in loop) *)
-        let create_standard_msg_block msg_decl = 
-            let (msg_bb, msg_builder) = make_block ("msg_"^msg_decl.A.mname^"_case") in
+    let build_msg_blocks = 
+        let actor_local_vars_copy = ! local_vars in
+
+        let create_msg_block decl = 
+            let (msg_bb, msg_builder) = make_block ("msg_"^decl.A.mname^"_case") in
             (*TODO: set up formal vars and local vars of msg *)
             
-            let msg_builder = stmt msg_builder (A.Block msg_decl.A.mbody) in
+            List.iter add_local decl.A.mbody;
+            let msg_builder = stmt msg_builder (A.Block decl.A.mbody) in
 
-            (* Terminator for msg block *)
+            local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
             L.position_at_end msg_bb msg_builder;
-            (*ignore(L.build_br continue_bb msg_builder);*)
             msg_bb
         in
-       
-        (* Returns default block that branches to continue_bb (i.e. continues in loop) *)
         let create_default_msg_block decl = 
             let (msg_bb, msg_builder) = make_block "msg_default_case" in
+           
+            List.iter add_local decl.A.dabody;
             let msg_builder = stmt msg_builder (A.Block decl.A.dabody) in
-
-            (* Terminator for msg block *)
+            local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
+             
             L.position_at_end msg_bb msg_builder;
-            (*ignore(L.build_br continue_bb msg_builder);*)
             msg_bb
         in
-
-        (* Returns block that branches to exit_bb (i.e. exits loop) *)
         let create_die_msg_block = 
             let (die_bb, die_builder) = make_block "msg_die_case" in
             
             (* body of die msg *)
 
-            (* Terminator for die block *)
-            L.position_at_end die_bb die_builder;
-            (*ignore(L.build_br exit_bb die_builder);*)
+            L.position_at_end die_bb die_builder;  
             die_bb
         in
         
-        let cases = List.map create_standard_msg_block adecl.A.receives in
+        let cases = List.map create_msg_block adecl.A.receives in
         let def_bb = create_default_msg_block adecl.A.drop in
         let die_bb = create_die_msg_block in
 
@@ -635,10 +631,27 @@ let translate (globals, functions, actors, structs) =
     in
 
     let build_body_block bb builder finish_bb merge_bb =  
+        (* pull message off queue and store the args struct pointer on the stack, 
+           along with the message number*)
+        
+        (* TODO: here we add calls to dequeue the next msg from msgqueue *)
+        
+        let msgp = L.build_alloca i8_t "" builder  in (* TODO: replace this with actual msg pointer *)
+        let _ = L.set_value_name "msg_ptr" msgp in
+        let local_msgp = L.build_alloca (L.pointer_type i8_t) "local_msg_p" builder in
+        let _ = L.build_store msgp local_msgp builder in
+        let local_msg_struct_p = L.build_alloca (L.pointer_type msg_struct_type) "msg_struct_p" builder in
+        let loaded_msgp = L.build_load local_msgp "" builder in
+        let casted_msgp = L.build_bitcast loaded_msgp (L.pointer_type msg_struct_type) "" builder in
+        ignore(L.build_store casted_msgp local_msg_struct_p builder);
+        (* FOR SWITCH STATEMENTS: local_msg_struct_p is a pointer to the message struct *)
+
+        let n = 20 in (* dummy msg num *)
         let msg_num = L.build_alloca i32_t "msg_case" builder in
-        let _ = L.build_store (L.const_int i32_t 20) msg_num builder in (*dummy msg num*)
+        let _ = L.build_store (L.const_int i32_t n) msg_num builder in
         let num = L.build_load msg_num "" builder in 
-        let cases = build_msg_blocks finish_bb merge_bb in
+        
+        let cases = build_msg_blocks in
 
         (* Terminator for body block *)
         L.position_at_end bb builder;   
@@ -654,6 +667,7 @@ let translate (globals, functions, actors, structs) =
         let (_, c) = List.fold_left add_msg_to_switch (0, []) (List.tl cases) in 
 
         (* Add terminator to each msg case block 
+         * 
          * COMMENT when testing msg body sequentially.
          * To test the body of just one msg, UNCOMMENT commedted line below.
          * It cases the specified case to branch to merge_bb instead of finish_bb *)
@@ -685,7 +699,7 @@ let translate (globals, functions, actors, structs) =
         let copy = List.rev c in
         let _ = List.map connect_blocks copy in
         let _ = ignore(L.build_br (snd (List.hd copy)) (L.builder_at_end context (List.hd cases))) in
-       *)
+        *)
         builder
     in
     
@@ -708,7 +722,7 @@ let translate (globals, functions, actors, structs) =
         ignore(L.build_br pred_bb finish_builder); (* Terminator for finish block *)
         
         (* Adds instructions and terminators for pred, body, and merge blocks *) 
-        let pred = L.const_int i1_t 0 in
+        let pred = L.const_int i1_t 0 in (* if 1, while loop runs *)
         let _ = build_pred_block pred  pred_bb pred_builder body_bb merge_bb in
         let _ = build_body_block body_bb body_builder finish_bb merge_bb in
         let _ = build_merge_block merge_bb merge_builder in

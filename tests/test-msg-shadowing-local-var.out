@@ -1,0 +1,11 @@
+new dolphin created.
+inside dolphin.
+dolphin's local sum var =
+13
+inside drop().
+inside eat().
+eat()'s local sum var =
+0
+inside swim().
+dolphin's local sum var =
+13
