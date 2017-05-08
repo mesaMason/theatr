@@ -498,22 +498,15 @@ let translate (globals, functions, actors, structs) =
 
     (* Returns list of msg blocks *)
     let build_msg_blocks = 
-        let actor_local_vars_copy = ! local_vars in
-
         let create_msg_block decl = 
             let (msg_bb, msg_builder) = make_block ("msg_"^decl.A.mname^"_case") in
-            (*TODO: set up formal vars and local vars of msg *)
-            
-            List.iter add_local decl.A.mbody;
-            let msg_builder = stmt msg_builder (A.Block decl.A.mbody) in
-
-            local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
             L.position_at_end msg_bb msg_builder;
             msg_bb
         in
         let create_default_msg_block decl = 
+            let actor_local_vars_copy = ! local_vars in
             let (msg_bb, msg_builder) = make_block "msg_default_case" in
-           
+
             List.iter add_local decl.A.dabody;
             let msg_builder = stmt msg_builder (A.Block decl.A.dabody) in
             local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
@@ -523,9 +516,7 @@ let translate (globals, functions, actors, structs) =
         in
         let create_die_msg_block = 
             let (die_bb, die_builder) = make_block "msg_die_case" in
-            
-            (* body of die msg *)
-
+            (* TODO body of die msg *)
             L.position_at_end die_bb die_builder;  
             die_bb
         in
@@ -538,7 +529,83 @@ let translate (globals, functions, actors, structs) =
         cases
     in
 
-    let build_body_block bb builder finish_bb merge_bb =  
+    (* Adds msg instructions - local vars and stmts *)
+    let add_msg_instructions decl bb struct_pt = 
+        let actor_local_vars_copy = !local_vars in
+        let msg_builder = L.builder_at_end context bb in
+
+        let load_struct = L.build_load struct_pt "" msg_builder in
+
+        (*let add_msg_formal idx (t,n) = 
+            let load_struct = L.build_load struct_pt "" msg_builder in
+            let zero = L.const_int i32_t 0 in
+            let idxVal = L.const_int i32_t idx in
+            (*let var_at_idx = L.build_struct_gep load_struct idx "" msg_builder in*)
+            let local = L.build_alloca (ltype_of_typ t) "" msg_builder in
+            (*ignore (L.build_store var_stored local msg_builder);*)
+            local_vars := StringMap.add n local !local_vars;
+            (idx+1) in
+        let _ = List.fold_left add_msg_formal 0 decl.A.mformals in
+        *)
+
+        let add_msg_formal (t,n) = 
+
+            let local = L.build_alloca (ltype_of_typ t) "" msg_builder in
+            local_vars := StringMap.add n local !local_vars;
+
+        in
+        let _ = List.map add_msg_formal decl.A.mformals in
+
+
+        List.iter add_local decl.A.mbody;
+        let msg_builder = stmt msg_builder (A.Block decl.A.mbody) in
+
+
+        local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
+        L.position_at_end bb msg_builder;
+    in
+
+    (* Adds msg instructions - local/formal vars and stmts *)
+    let add_msg_instructions_formals decl bb str_p = 
+        let actor_local_vars_copy = ! local_vars in
+        let msg_builder = L.builder_at_end context bb in
+
+        let _ = List.fold_left add_formal (0, str_p) decl.A.mformals in
+        List.iter add_local decl.A.mbody;
+        let msg_builder = stmt msg_builder (A.Block decl.A.mbody) in
+
+        local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
+        L.position_at_end bb msg_builder;
+    in
+
+    let build_body_block bb builder finish_bb merge_bb = 
+        (* Map of message structs - decl name : struct_type *)
+        let msg_struct_types = 
+            let msg_struct m decl = 
+                let list_arg_types = List.map (fun (t,_) -> ltype_of_typ t) decl.A.mformals in
+                let type_array = Array.of_list list_arg_types in
+                let name = decl.A.mname in
+                let struct_type = L.named_struct_type context (name ^ "_struct") in
+                let _ = L.struct_set_body struct_type type_array false in
+                StringMap.add name struct_type m in
+            List.fold_left msg_struct StringMap.empty adecl.A.receives in
+
+        (* Map of message struct holders - decl name : struct pointer *)
+        let msg_struct_holder = 
+            let holder m decl = 
+                let name = decl.A.mname in
+                let struct_t = StringMap.find decl.A.mname msg_struct_types in
+                let m_struct = L.build_alloca struct_t "" builder in
+                let fill_struct idx (t,n) = 
+                    let value = L.build_alloca (ltype_of_typ t) ""  builder in 
+                    let ptr = L.build_struct_gep m_struct idx "" builder in
+                    let _ = L.build_store value ptr builder in
+                    idx+1 in
+                let _ = List.fold_left fill_struct 0 decl.A.mformals in
+                let struct_pt = L.build_bitcast m_struct (L.pointer_type struct_t) "" builder in
+                StringMap.add name m_struct m in
+            List.fold_left holder StringMap.empty adecl.A.receives in
+        
 
         (* pull message off queue and store the args struct pointer on the stack, 
            along with the message number*)
@@ -566,29 +633,43 @@ let translate (globals, functions, actors, structs) =
         L.position_at_end bb builder;   
         let sw = L.build_switch num (List.hd cases) (List.length (List.tl cases)) builder in
 
-        (*Adds cases to switch *)
-        let add_msg_to_switch (count, li) bb = 
-            let li = (count,bb) :: li in
-            let case_num = L.const_int i32_t count in
+        (*Adds cases to switch and creates block and decl maps*)
+        let add_msg_to_switch (count, m) bb = 
+            let m = StringMap.add count bb m in
+            let count_int = int_of_string count in
+            let case_num = L.const_int i32_t count_int in
             L.add_case sw case_num bb;
-            (count+1, li)
+            (string_of_int (count_int+1), m)
         in
-        let (_, c) = List.fold_left add_msg_to_switch (0, []) (List.tl cases) in 
+        let (_, bb_map) = List.fold_left add_msg_to_switch ("0", StringMap.empty) (List.tl cases) in
+        let bb_map = StringMap.add "-1" (List.hd cases) bb_map in
+
+        let count_mdecl (count, m) decl = 
+            let count_int = int_of_string count in
+            let m = StringMap.add count decl m in
+            (string_of_int (count_int+1), m)
+        in
+        let (_, decl_map) = List.fold_left count_mdecl ("1", StringMap.empty) adecl.A.receives in   
+        
+        (* Adds msg body instructions msg body *)
+        let add_msg_vars_body c decl = 
+            let msg_bb = StringMap.find c bb_map in
+            let m_struct = StringMap.find decl.A.mname msg_struct_holder in
+            add_msg_instructions decl msg_bb m_struct
+        in
+        StringMap.iter add_msg_vars_body decl_map;
 
         (* Add terminator to each msg case block 
          * 
          * COMMENT when testing msg body sequentially.
          * To test the body of just one msg, UNCOMMENT commedted line below.
          * It cases the specified case to branch to merge_bb instead of finish_bb *)
-        let add_case_terminals (num, bb) = match num with 
-            | 0 -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
+        let add_case_terminals count bb = match count with 
+            | "0" -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
           (*| # -> ignore(L.build_br merge_bb (L.builder_at_end context bb)*)
             | _ -> ignore(L.build_br finish_bb (L.builder_at_end context bb))
         in
-        let copy = c in
-        let _ = List.map add_case_terminals copy in
-        let def_bb = List.hd cases in
-        ignore(L.build_br finish_bb (L.builder_at_end context def_bb));
+        let _ = StringMap.iter add_case_terminals bb_map in
        
         (* To test all msg bodies starting with default and moving to other cases in 
          * in rev sequential order, do following:
@@ -626,8 +707,7 @@ let translate (globals, functions, actors, structs) =
         let (body_bb, body_builder) = make_block "body_msg_while" in
         let (finish_bb, finish_builder) = make_block "finish_msg_while" in
         let (merge_bb, merge_builder) = make_block "merge_msg_while" in
-        
-        ignore (L.build_br pred_bb builder); (* Terminator for block calling while *) 
+         
         ignore(L.build_br pred_bb finish_builder); (* Terminator for finish block *)
         
         (* Adds instructions and terminators for pred, body, and merge blocks *) 
@@ -635,6 +715,9 @@ let translate (globals, functions, actors, structs) =
         let _ = build_pred_block pred  pred_bb pred_builder body_bb merge_bb in
         let _ = build_body_block body_bb body_builder finish_bb merge_bb in
         let _ = build_merge_block merge_bb merge_builder in
+        
+        L.position_at_end (L.entry_block the_function) builder; 
+        ignore (L.build_br pred_bb builder); (* Terminator for block calling while *)
         ()
     in
     build_actor_while in
