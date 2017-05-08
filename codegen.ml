@@ -199,7 +199,7 @@ let translate (globals, functions, actors, structs) =
     ignore(L.struct_set_body struct_head_t [| L.pointer_type struct_queue_t ; union_pthread_cond_t ; union_pthread_mutex_t_t |]);
   in
 
-  let initialize_queue_t = L.var_arg_function_type (L.pointer_type struct_head_t) [||] in
+  let initialize_queue_t = L.function_type (L.pointer_type struct_head_t) [||] in
   let initialize_queue_func = L.declare_function "initialize_queue" initialize_queue_t the_module in
 
   let enqueue_t = L.function_type (L.void_type context) [| L.pointer_type struct_head_t ; i32_t ; L.pointer_type i8_t ; L.pointer_type i8_t |] in
@@ -400,7 +400,7 @@ let translate (globals, functions, actors, structs) =
        let tid_in_struct = L.build_struct_gep addr_struct 1 "" builder in
        let msgQueue = L.build_struct_gep addr_struct 2 "" builder in
        let qhead = L.build_call initialize_queue_func [||] "" builder in
-       let qhead_casted = L.const_bitcast qhead (L.pointer_type i8_t) in
+       let qhead_casted = L.build_bitcast qhead (L.pointer_type i8_t) "" builder in
        let _ = L.build_store qhead_casted msgQueue builder in
        (* TODO: do a build_store to put the msg queue pointer into msgQueue *)
        let result = addr_struct in
