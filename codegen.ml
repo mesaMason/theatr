@@ -561,45 +561,165 @@ let translate (globals, functions, actors, structs) =
       | A.For (e1, e2, e3, body) -> stmt builder
       ( A.Block [A.Expr e1 ; A.While (e2, A.Block [body ; A.Expr e3]) ] )
     in
+
+    (* Execute actor's local statements *)
     let builder = stmt builder (A.Block adecl.A.alocals) in
 
-    let pred_bb = L.append_block context "msg_while" the_function in
-    ignore (L.build_br pred_bb builder);
+    (***** Actor implementation 
+     * Constant communication with message queue simulated through infite while loop.
+     * Different message functionality simulated through switch-cases 
+     * die() message exits infite while loop. 
+     *
+     * ******)
+    let make_block name = 
+        let bb = L.append_block context (name^"_bb") the_function in
+        let builder = L.builder_at_end context bb in
+        (bb, builder)
+    in
 
-    (* build body of msg receive loop *)
-    let body_bb = L.append_block context "msg_while_body" the_function in
+    let build_pred_block pred bb builder body_bb merge_bb = 
+        (*let bool_val = expr builder predicate in*)
+        let bool_val = pred in
 
-    (* pull message off queue and store the args struct pointer on the stack, 
-       along with the message number*)
-    let builder = L.builder_at_end context body_bb in
-    (* TODO: here we add calls to dequeue the next msg from msgqueue *)
-    let msgp = L.build_alloca i8_t "" builder in (* TODO: replace this with actual msg pointer *)
+        (* Terminator for pred block *)
+        L.position_at_end bb builder;
+        ignore (L.build_cond_br bool_val body_bb merge_bb builder);
+        builder
+    in
+
+    (* Returns list of msg blocks *)
+    let build_msg_blocks continue_bb exit_bb = 
+        (* Returns msg block that branches to continue_bb (i.e. continues in loop) *)
+        let create_standard_msg_block msg_decl = 
+            let (msg_bb, msg_builder) = make_block ("msg_"^msg_decl.A.mname^"_case") in
+            (*TODO: set up formal vars and local vars of msg *)
+            
+            let msg_builder = stmt msg_builder (A.Block msg_decl.A.mbody) in
+
+            (* Terminator for msg block *)
+            L.position_at_end msg_bb msg_builder;
+            (*ignore(L.build_br continue_bb msg_builder);*)
+            msg_bb
+        in
+       
+        (* Returns default block that branches to continue_bb (i.e. continues in loop) *)
+        let create_default_msg_block decl = 
+            let (msg_bb, msg_builder) = make_block "msg_default_case" in
+            let msg_builder = stmt msg_builder (A.Block decl.A.dabody) in
+
+            (* Terminator for msg block *)
+            L.position_at_end msg_bb msg_builder;
+            (*ignore(L.build_br continue_bb msg_builder);*)
+            msg_bb
+        in
+
+        (* Returns block that branches to exit_bb (i.e. exits loop) *)
+        let create_die_msg_block = 
+            let (die_bb, die_builder) = make_block "msg_die_case" in
+            
+            (* body of die msg *)
+
+            (* Terminator for die block *)
+            L.position_at_end die_bb die_builder;
+            (*ignore(L.build_br exit_bb die_builder);*)
+            die_bb
+        in
+        
+        let cases = List.map create_standard_msg_block adecl.A.receives in
+        let def_bb = create_default_msg_block adecl.A.drop in
+        let die_bb = create_die_msg_block in
+
+        let cases = def_bb :: die_bb :: cases in
+
+        cases
+    in
+
+    let build_body_block bb builder finish_bb merge_bb =  
+        (* TODO: pull message off queue and store the args struct pointer on the stack, 
+        along with the message number*)
+
+        let msg_num = L.build_alloca i32_t "msg_case" builder in
+        let _ = L.build_store (L.const_int i32_t 20) msg_num builder in (*dummy msg num*)
+        let num = L.build_load msg_num "" builder in 
+        let cases = build_msg_blocks finish_bb merge_bb in
+
+        (* Terminator for body block *)
+        L.position_at_end bb builder;   
+        let sw = L.build_switch num (List.hd cases) (List.length (List.tl cases)) builder in
+
+        (*Adds cases to switch *)
+        let add_msg_to_switch (count, li) bb = 
+            let li = (count,bb) :: li in
+            let case_num = L.const_int i32_t count in
+            L.add_case sw case_num bb;
+            (count+1, li)
+        in
+        let (_, c) = List.fold_left add_msg_to_switch (0, []) (List.tl cases) in
+        
+
+        (* Add terminator to each msg case block 
+         * COMMENT when testing msg body sequentially.
+         * To test the body of just one msg, UNCOMMENT commedted line below.
+         * It cases the specified case to branch to merge_bb instead of finish_bb *)
+        let add_case_terminals (num, bb) = match num with 
+            | 0 -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
+          (*| # -> ignore(L.build_br merge_bb (L.builder_at_end context bb)*)
+            | _ -> ignore(L.build_br finish_bb (L.builder_at_end context bb))
+        in
+        let copy = c in
+        let _ = List.map add_case_terminals copy in
+        let def_bb = List.hd cases in
+        ignore(L.build_br finish_bb (L.builder_at_end context def_bb));
+       
+
+        (* To test all msg bodies starting with default and moving to other cases in 
+         * in rev sequential order, do following:
+         * 1. UNCOMMENT to test all msg bodies sequentially 
+         * 2. COMMENT prev section - Add terminator to cases 
+         * 3. SET num to a high number than the  number of msg + 1 
+         *    to ensure first case called is default case. 
+         * 4. SET `pred` in build_actor_while to true, if not already 
+         *    to ensure while loop running. 
+         * *)
+        (*let c = List.rev c in
+        let connect_blocks (num, bb) = match num with 
+          | 0 -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
+          | _ -> let branch_bb = snd (List.nth c (num - 1)) in 
+                 ignore(L.build_br branch_bb (L.builder_at_end context bb))
+        in
+        let copy = List.rev c in
+        let _ = List.map connect_blocks copy in
+        let _ = ignore(L.build_br (snd (List.hd copy)) (L.builder_at_end context (List.hd cases))) in
+       *)
+        builder
+    in
     
-    let _ = L.set_value_name "msg_ptr" msgp in
-    let local_msgp = L.build_alloca (L.pointer_type i8_t) "local_msg_p" builder in
-    let _ = L.build_store msgp local_msgp builder in
-    let local_msg_struct_p = L.build_alloca (L.pointer_type msg_struct_type) "msg_struct_p" builder in
-    let loaded_msgp = L.build_load local_msgp "" builder in
-    let casted_msgp = L.build_bitcast loaded_msgp (L.pointer_type msg_struct_type) "" builder in
-    ignore(L.build_store casted_msgp local_msg_struct_p builder);
-    (* FOR SWITCH STATEMENTS: local_msg_struct_p is a pointer to the message struct *)
+    let build_merge_block bb builder =  
+        let ret_void_star = L.build_alloca (i8_t) "ret" builder in
+        
+        (* Terminator for merge block *)
+        L.position_at_end bb builder;
+        ignore(L.build_ret ret_void_star builder);
+        builder
+    in
 
-    let build_recv_funcs (builder,count) msg_decl =
-      (* codegen for each recv function here *)
-      ignore(L.build_alloca i32_t "temp" builder);
-      (builder,count+1) in
-
-    let (builder, _) = List.fold_left build_recv_funcs ((L.builder_at_end context body_bb), 1) adecl.A.receives in
-
-    ignore(L.build_br pred_bb builder); (* terminator for the while loop *)
-    let pred_builder = L.builder_at_end context pred_bb in
-    let bool_val = L.const_int i1_t 0 in (* TODO: change i1_t to 1 to make it loop *)
-    let merge_bb = L.append_block context "msg_merge" the_function in
-    ignore (L.build_cond_br bool_val body_bb merge_bb pred_builder);
-    let builder = L.builder_at_end context merge_bb in
-                     
-    let ret_void_star = L.build_alloca (i8_t) "ret" builder in
-    ignore(L.build_ret ret_void_star builder) in
+    let build_actor_while =  
+        let (pred_bb, pred_builder) = make_block "pred_msg_while" in
+        let (body_bb, body_builder) = make_block "body_msg_while" in
+        let (finish_bb, finish_builder) = make_block "finish_msg_while" in
+        let (merge_bb, merge_builder) = make_block "merge_msg_while" in
+        
+        ignore (L.build_br pred_bb builder); (* Terminator for builder block *) 
+        ignore(L.build_br pred_bb finish_builder); (* Terminator for finish block *)
+        
+        (* Adds instructions and terminators for pred, body, and merge blocks *) 
+        let pred = L.const_int i1_t 0 in
+        let _ = build_pred_block pred  pred_bb pred_builder body_bb merge_bb in
+        let _ = build_body_block body_bb body_builder finish_bb merge_bb in
+        let _ = build_merge_block merge_bb merge_builder in
+        ()
+    in
+    build_actor_while in
   let _ = List.iter build_actor_thread_func_body actors in
   (* finished building actor thread functions, move on to normal functions *)
 
