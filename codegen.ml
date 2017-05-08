@@ -635,9 +635,6 @@ let translate (globals, functions, actors, structs) =
     in
 
     let build_body_block bb builder finish_bb merge_bb =  
-        (* TODO: pull message off queue and store the args struct pointer on the stack, 
-        along with the message number*)
-
         let msg_num = L.build_alloca i32_t "msg_case" builder in
         let _ = L.build_store (L.const_int i32_t 20) msg_num builder in (*dummy msg num*)
         let num = L.build_load msg_num "" builder in 
@@ -654,8 +651,7 @@ let translate (globals, functions, actors, structs) =
             L.add_case sw case_num bb;
             (count+1, li)
         in
-        let (_, c) = List.fold_left add_msg_to_switch (0, []) (List.tl cases) in
-        
+        let (_, c) = List.fold_left add_msg_to_switch (0, []) (List.tl cases) in 
 
         (* Add terminator to each msg case block 
          * COMMENT when testing msg body sequentially.
@@ -670,8 +666,7 @@ let translate (globals, functions, actors, structs) =
         let _ = List.map add_case_terminals copy in
         let def_bb = List.hd cases in
         ignore(L.build_br finish_bb (L.builder_at_end context def_bb));
-       
-
+        
         (* To test all msg bodies starting with default and moving to other cases in 
          * in rev sequential order, do following:
          * 1. UNCOMMENT to test all msg bodies sequentially 
@@ -709,7 +704,7 @@ let translate (globals, functions, actors, structs) =
         let (finish_bb, finish_builder) = make_block "finish_msg_while" in
         let (merge_bb, merge_builder) = make_block "merge_msg_while" in
         
-        ignore (L.build_br pred_bb builder); (* Terminator for builder block *) 
+        ignore (L.build_br pred_bb builder); (* Terminator for block calling while *) 
         ignore(L.build_br pred_bb finish_builder); (* Terminator for finish block *)
         
         (* Adds instructions and terminators for pred, body, and merge blocks *) 
