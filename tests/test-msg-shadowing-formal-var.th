@@ -27,7 +27,7 @@ dolphin(int weight, int age):
         print("inside drop().")
         print("dolphin's formal weight = ")
         print(weight)
-        print(dolphin's local sum = ")
+        print("dolphin's local sum = ")
         print(sum)
     after:
         return;

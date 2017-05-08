@@ -1,0 +1,77 @@
+
+n(int weight, int age):
+    print("inside dolphin.")
+    print("dolphin's local sum var =")
+    int sum = weight + age
+    print(sum)
+
+    receive:
+        // msg local var shadowing msg formal var
+        swim(int hours):
+            int hours = 0
+            print("inside swim().")
+            print("dolphin's hours =")
+            print(hours)
+
+        // msg formal shadowing actor formal
+        eat(int weight):
+            print("inside eat().")
+            print("eat()'s formal weight =")
+            print(weight)
+
+        // msg formal shadowing actor local
+        sleep(int sum):
+            print("inside sleep().")
+            print("sleep()'s local sum =")
+            print(sum)
+    drop:
+        print("inside drop().")
+        print("dolphin's formal weight = ")
+        print(weight)
+        print("dolphin's local sum = ")
+        print(sum)
+    after:
+        return;
+        
+func main() -> int:
+    int weight = 10
+    int age = 3
+    actor d = new dolphin(weight, age)
+    
+    print("new dolphin created.")
+
+    // Testing formal args shadowing
+    // swim(13) | d
+    // eat(30) | d
+    // sleep(0) | d
+    // hello() | d
+    // die() | d
+
+    return 0
+dolphin(int weight, int length):
+    receive:
+        eat(int num, int hours):
+            print("eat()'s formal num = ")
+            print(num)
+            print("eat()'s formal hours = ")
+            print(hours)
+        swim(int num):
+            print("swim()'s formal num = ")
+            print(num)
+    drop:
+        print("inside drop()")
+    after:
+        int time
+
+func main() -> int:
+    print("Hello world!")
+    actor d = new dolphin(5,10)
+    
+    // Tests that all formals are accessible
+    // hello(5) | d
+    // eat(40,2) | d
+    // swim(30) | d
+    // die() | d
+
+
+    return 0
