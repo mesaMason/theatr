@@ -1,34 +1,21 @@
 (* Ocamllex scanner for Theatr *)
 
-(*
-{ open Parser }
-*)
-
 {
-  open Parser
-  exception Scan_error of string
+    open Parser
 
-  let make_char c =
-    let ec = Char.escaped c in
-    let s = Scanf.unescaped (match String.length ec with
-        1 -> "\\" ^ ec
-      | _ -> ec) in
-    String.get s 0
-
-(*  let fail c = raise (Scan_error (Char.escaped c))
-*)
+    let make_char c =
+        let ec = Char.escaped c in
+        let s = Scanf.unescaped (match String.length ec with
+            1 -> "\\" ^ ec
+          | _ -> ec) in
+        String.get s 0
 }
 
-let letter = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']
 let double = ('-'?)((digit+'.'digit*) | ('.'digit+))
-let punct = [' '-'!' '#'-'[' ']'-'~']
 let simp_chr = [' '-'!' '#'-'&' '('-'[' ']'-'~']
 let esc_chr = ['t' 'n' 'r' '\'' '\"' '\\']
-(*
-let str = (letter | digit | punct)* as s
-*)
-let str = (letter | digit | punct | '\\' esc_chr)* as s
+let str = ( simp_chr | '\\' esc_chr ) as s
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
@@ -40,7 +27,7 @@ rule token = parse
 | '}'      { RBRACE }
 | "receive" { RECEIVE }
 | "drop"   { DROP }
-| "after"  { AFTER }	   
+| "after"  { AFTER }
 | "->"     { FUNC_ARROW }
 | "func"   { FUNC_DECL }
 | "new"    { NEW }
@@ -80,21 +67,20 @@ rule token = parse
 | "false"  { FALSE }
 | "string" { STRING }
 | "char"   { CHAR }
+
 (* Literals *)
-| ['0'-'9']+ as lxm { INTLIT(int_of_string lxm) }
-| double as lxm { DOUBLELIT(float_of_string lxm) }
-| '"' str '"' { STRINGLIT(s) }
-| '\"' ((simp_chr | '\\' esc_chr)* as lxm) '\"' { STRINGLIT(lxm) }
+| digit+ as lxm { INTLIT(int_of_string lxm) }
+| double as lxm { DOUBLELIT(float_of_string lxm)}
+| "\"" ((simp_chr | '\\' esc_chr)* as lxm) "\"" { STRINGLIT(lxm) }
 | '\'' (simp_chr as lxm) '\'' { CHARLIT(lxm) }
 | "'\\" (esc_chr as ec) "'" { CHARLIT(make_char ec) }
 
 (* Identifiers *)
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
+
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
-(*
-| _ as bad { fail bad }
-*)
+
 
 and comment = parse
   "*/" { token lexbuf }
@@ -103,4 +89,3 @@ and comment = parse
 and single_line_comment = parse
 | '\n'  { token lexbuf }
 | _     { single_line_comment lexbuf }
-

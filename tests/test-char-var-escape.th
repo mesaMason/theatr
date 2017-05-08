@@ -1,0 +1,12 @@
+func main() -> int:
+    char c
+    c = '\n'
+    char d = '\t'
+    char e = '\"'
+//    print("before newline")
+    print(c)
+//    print("after new line. tab:")
+    print(d)
+//    print("after tab")
+    print(e)
+    return 0
