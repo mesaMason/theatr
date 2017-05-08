@@ -8,7 +8,6 @@ dolphin(int weight, int length):
             length = length + num
     drop:
         weight = weight + 1
-        return
     after:
         int time
 

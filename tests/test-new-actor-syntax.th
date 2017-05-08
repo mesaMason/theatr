@@ -12,7 +12,6 @@ dolphin(int weight, int age):
     drop:
         print(weight)
         print(age)
-        return;
     after:
         return;
         
