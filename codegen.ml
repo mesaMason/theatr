@@ -592,25 +592,22 @@ let translate (globals, functions, actors, structs) =
         let create_msg_block decl = 
             let (msg_bb, msg_builder) = make_block ("msg_"^decl.A.mname^"_case") in
             L.position_at_end msg_bb msg_builder;
-            msg_bb
-        in
+            msg_bb in
+
         let create_default_msg_block decl = 
             let actor_local_vars_copy = ! local_vars in
             let (msg_bb, msg_builder) = make_block "msg_default_case" in
-
             List.iter add_local decl.A.dabody;
             let msg_builder = stmt msg_builder (A.Block decl.A.dabody) in
             local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
-             
             L.position_at_end msg_bb msg_builder;
-            msg_bb
-        in
+            msg_bb in
+        
         let create_die_msg_block = 
             let (die_bb, die_builder) = make_block "msg_die_case" in
             (* TODO body of die msg *)
             L.position_at_end die_bb die_builder;  
-            die_bb
-        in
+            die_bb in
         
         let cases = List.map create_msg_block adecl.A.receives in
         let def_bb = create_default_msg_block adecl.A.drop in
@@ -626,46 +623,17 @@ let translate (globals, functions, actors, structs) =
         let actor_local_vars_copy = !local_vars in
         let msg_builder = L.builder_at_end context bb in
 
-        let load_struct = L.build_load struct_pt "" msg_builder in
-
-        (*let add_msg_formal idx (t,n) = 
-            let load_struct = L.build_load struct_pt "" msg_builder in
-            let zero = L.const_int i32_t 0 in
-            let idxVal = L.const_int i32_t idx in
-            (*let var_at_idx = L.build_struct_gep load_struct idx "" msg_builder in*)
-            let local = L.build_alloca (ltype_of_typ t) "" msg_builder in
-            (*ignore (L.build_store var_stored local msg_builder);*)
+        let add_msg_formal idx (t,n) = 
+            let ptr = L.build_struct_gep struct_pt idx "f_ptr" msg_builder in
+            let value = L.build_load ptr "" msg_builder in
+            let local = L.build_alloca (ltype_of_typ t) "formal" msg_builder in
+            ignore(L.build_store value local msg_builder);
             local_vars := StringMap.add n local !local_vars;
             (idx+1) in
         let _ = List.fold_left add_msg_formal 0 decl.A.mformals in
-        *)
 
-        let add_msg_formal (t,n) = 
-
-            let local = L.build_alloca (ltype_of_typ t) "" msg_builder in
-            local_vars := StringMap.add n local !local_vars;
-
-        in
-        let _ = List.map add_msg_formal decl.A.mformals in
-
-
-        List.iter add_local decl.A.mbody;
+        List.iter add_local decl.A.mbody; (* TODO move local var to msg_builder *)
         let msg_builder = stmt msg_builder (A.Block decl.A.mbody) in
-
-
-        local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
-        L.position_at_end bb msg_builder;
-    in
-
-    (* Adds msg instructions - local/formal vars and stmts *)
-    let add_msg_instructions_formals decl bb str_p = 
-        let actor_local_vars_copy = ! local_vars in
-        let msg_builder = L.builder_at_end context bb in
-
-        let _ = List.fold_left add_formal (0, str_p) decl.A.mformals in
-        List.iter add_local decl.A.mbody;
-        let msg_builder = stmt msg_builder (A.Block decl.A.mbody) in
-
         local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
         L.position_at_end bb msg_builder;
     in
@@ -689,12 +657,12 @@ let translate (globals, functions, actors, structs) =
                 let struct_t = StringMap.find decl.A.mname msg_struct_types in
                 let m_struct = L.build_alloca struct_t "" builder in
                 let fill_struct idx (t,n) = 
-                    let value = L.build_alloca (ltype_of_typ t) ""  builder in 
-                    let ptr = L.build_struct_gep m_struct idx "" builder in
+                    let value_ptr = L.build_alloca (ltype_of_typ t) "f_v_ptr"  builder in 
+                    let value = L.build_load value_ptr "f_v" builder in
+                    let ptr = L.build_struct_gep m_struct idx "f_ptr" builder in
                     let _ = L.build_store value ptr builder in
                     idx+1 in
                 let _ = List.fold_left fill_struct 0 decl.A.mformals in
-                let struct_pt = L.build_bitcast m_struct (L.pointer_type struct_t) "" builder in
                 StringMap.add name m_struct m in
             List.fold_left holder StringMap.empty adecl.A.receives in
         
@@ -749,6 +717,7 @@ let translate (globals, functions, actors, structs) =
             add_msg_instructions decl msg_bb m_struct
         in
         StringMap.iter add_msg_vars_body decl_map;
+
 
         (* Add terminator to each msg case block 
          * 
