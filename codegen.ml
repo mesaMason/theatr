@@ -534,7 +534,7 @@ let translate (globals, functions, actors, structs) =
         let add_msg_formal idx (t,n) = 
             let ptr = L.build_struct_gep struct_pt idx "f_ptr" msg_builder in
             let value = L.build_load ptr "" msg_builder in
-            let local = L.build_alloca (ltype_of_typ t) "formal" msg_builder in
+            let local = L.build_alloca (ltype_of_typ t) n msg_builder in
             ignore(L.build_store value local msg_builder);
             local_vars := StringMap.add n local !local_vars;
             (idx+1) in
@@ -565,7 +565,12 @@ let translate (globals, functions, actors, structs) =
                 let struct_t = StringMap.find decl.A.mname msg_struct_types in
                 let m_struct = L.build_alloca struct_t "" builder in
                 let fill_struct idx (t,n) = 
-                    let value_ptr = L.build_alloca (ltype_of_typ t) "f_v_ptr"  builder in 
+                    let value_ptr = L.build_alloca (ltype_of_typ t) "f_v_ptr"  builder in
+                    (* UCOMMENT when testing formals 
+                     * value_test and build_store lines are for testing formals
+                     * Assumes all arguments are ints *) 
+                    let value_test = L.const_int i32_t 1 in
+                    ignore(L.build_store value_test value_ptr builder);
                     let value = L.build_load value_ptr "f_v" builder in
                     let ptr = L.build_struct_gep m_struct idx "f_ptr" builder in
                     let _ = L.build_store value ptr builder in
@@ -633,32 +638,33 @@ let translate (globals, functions, actors, structs) =
          * COMMENT when testing msg body sequentially.
          * To test the body of just one msg, UNCOMMENT commedted line below.
          * It cases the specified case to branch to merge_bb instead of finish_bb *)
-        let add_case_terminals count bb = match count with 
+        (*let add_case_terminals count bb = match count with 
             | "0" -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
-          (*| # -> ignore(L.build_br merge_bb (L.builder_at_end context bb)*)
+          (*| "#" -> ignore(L.build_br merge_bb (L.builder_at_end context bb)*)
             | _ -> ignore(L.build_br finish_bb (L.builder_at_end context bb))
         in
         let _ = StringMap.iter add_case_terminals bb_map in
-       
+       *)
         (* To test all msg bodies starting with default and moving to other cases in 
          * in rev sequential order, do following:
          * 1. UNCOMMENT to test all msg bodies sequentially 
-         * 2. COMMENT prev section - Add terminator to cases 
-         * 3. SET num to a high number than the  number of msg + 1 
+         * 2. UNCOMMENT value_test and L.build_store lines in msg_struct_holder
+         * 3. COMMENT prev section - Add terminator to cases 
+         * 4. SET num to a high number than the  number of msg + 1 
          *    to ensure first case called is default case. 
-         * 4. SET `pred` in build_actor_while to true, if not already 
+         * 5. SET `pred` in build_actor_while to true, if not already 
          *    to ensure while loop running. 
          * *)
-        (*let c = List.rev c in
-        let connect_blocks (num, bb) = match num with 
-          | 0 -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
-          | _ -> let branch_bb = snd (List.nth c (num - 1)) in 
-                 ignore(L.build_br branch_bb (L.builder_at_end context bb))
-        in
-        let copy = List.rev c in
-        let _ = List.map connect_blocks copy in
-        let _ = ignore(L.build_br (snd (List.hd copy)) (L.builder_at_end context (List.hd cases))) in
-        *)
+        let connect_blocks count bb = match count with 
+          | "-1" -> let last_num = string_of_int (List.length adecl.A.receives) in
+                    let branch_bb = StringMap.find last_num bb_map in 
+                    ignore(L.build_br branch_bb (L.builder_at_end context bb))
+          | "0" -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
+          | _ -> let prev_num = string_of_int ((int_of_string count) - 1) in
+                 let branch_bb = StringMap.find prev_num bb_map in 
+                 ignore(L.build_br branch_bb (L.builder_at_end context bb)) in
+        let _ = StringMap.iter connect_blocks bb_map in
+        
         builder
     in
     
@@ -680,7 +686,7 @@ let translate (globals, functions, actors, structs) =
         ignore(L.build_br pred_bb finish_builder); (* Terminator for finish block *)
         
         (* Adds instructions and terminators for pred, body, and merge blocks *) 
-        let pred = L.const_int i1_t 0 in (* if 1, while loop runs *)
+        let pred = L.const_int i1_t 1 in (* if 1, while loop runs *)
         let _ = build_pred_block pred  pred_bb pred_builder body_bb merge_bb in
         let _ = build_body_block body_bb body_builder finish_bb merge_bb in
         let _ = build_merge_block merge_bb merge_builder in
