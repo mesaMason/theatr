@@ -12,7 +12,7 @@ dolphin(int weight, int age):
             weight = weight + food
             age = age + time
     drop:
-        return
+        print("inside drop()")
         
 babyDolphin(int weight, int age):
     print("baby dolphin here")
@@ -22,7 +22,7 @@ babyDolphin(int weight, int age):
         eat(int food):
             weight = weight + food
     drop:
-        return
+        print("inside drop()")
 
 func main() -> int:
     int weight = 100

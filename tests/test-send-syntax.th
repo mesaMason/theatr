@@ -5,7 +5,7 @@ dolphin(int weight, int age):
         eat(int food):
             weight = weight + food
     drop:
-        return;
+        print("inside drop()")
     after:
         return;
         
