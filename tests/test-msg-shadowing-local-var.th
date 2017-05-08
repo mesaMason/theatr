@@ -1,0 +1,30 @@
+dolphin(int weight, int age):
+    print("inside dolphin.")
+    print("dolphin's local sum var =")
+    int sum = weight + age
+    print(sum)
+
+    receive:
+        swim():
+            print("inside swim().")
+            print("dolphin's local sum var =")
+            print(sum)
+        eat():
+            int sum = 0
+            print("inside eat().")
+            print("eat()'s local sum var =")
+            print(sum)
+
+    drop:
+        print("inside drop().")
+    after:
+        return;
+        
+func main() -> int:
+    int weight = 10
+    int age = 3
+    actor d = new dolphin(weight, age)
+    
+    print("new dolphin created.")
+    return 0
+
