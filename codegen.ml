@@ -535,7 +535,6 @@ let translate (globals, functions, actors, structs) =
         let die_bb = create_die_msg_block in
 
         let cases = def_bb :: die_bb :: cases in
-
         cases
     in
 
