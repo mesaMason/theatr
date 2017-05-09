@@ -348,51 +348,6 @@ let translate (globals, functions, actors) =
                             let (llvalue, _) = alookup s in
                             local_actors := StringMap.add s (llvalue, funcMap) !local_actors; ()
                          | _ -> ()); e'
-    | A.Call("pthread_create", actuals) ->
-       let f = (match (List.hd actuals) with 
-                  A.Id s -> s
-                | _ -> raise(Failure ("expected valid func id for pthread()"))) in 
-
-       let act_func_name = match actuals with hd :: tl -> A.string_of_expr hd in
-       let act_args = match actuals with hd :: tl -> tl in 
-       let act_list_vals = List.map (expr builder) act_args in
-       let act_list_types = List.map (L.type_of) act_list_vals in
-       let act_vals_array = (Array.of_list act_list_vals) in
-       let act_type_array = (Array.of_list act_list_types) in
-
-       (* create struct type 
-           set struct body to fill in the struct type 
-           allocate an instance of the struct on the stack
-           iterate through the args, store them in appropriate index on the stack
-           cast the struct to a pointer type
-        *)
-       let act_struct_type = L.named_struct_type context (act_func_name ^ "_struct") in
-       let _ = L.struct_set_body act_struct_type act_type_array false in 
-       let act_struct = L.build_alloca act_struct_type "" builder in
-       let index_and_store idx _ =
-         let pt = L.build_struct_gep act_struct idx "" builder in
-         let _ = L.build_store act_vals_array.(idx) pt builder in idx+1 in
-       let _ = (match List.length act_list_vals with
-                  0 -> -1
-                | _ -> List.fold_left index_and_store 0 act_list_vals) in 
-       let act_struct_casted = (match List.length act_list_vals with
-                                  0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
-                                | _ -> L.build_bitcast act_struct (L.pointer_type i8_t) "" builder) in
-
-       let (fdef, _) = StringMap.find f function_decls in 
-       let pthread_pt = L.build_alloca i32_t "tid" builder in  
-       let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
-       let func = L.const_bitcast fdef (L.pointer_type (L.function_type (L.pointer_type i8_t) 
-                                                                        [|L.pointer_type i8_t|])) in
-       
-       let args = [| pthread_pt ; attr ; func ; act_struct_casted |] in 
-       let _ = L.build_call pthread_create_func args "pthread_create_result" builder in
-
-       let join_attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type (L.pointer_type i8_t)) in
-       let pthread_pt_pid = L.build_load pthread_pt "tid" builder in
-
-       L.build_call pthread_join_func [| pthread_pt_pid ; join_attr|] "pthread_join_result" builder
-
     | A.Call ("print", [e]) | A.Call ("printb", [e]) -> 
        let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder
        and format_double_str = L.build_global_stringptr "%f\n" "fmt" builder in
@@ -712,7 +667,7 @@ let translate (globals, functions, actors) =
     in
 
     (* Adds msg instructions - local vars and stmts *)
-    let add_msg_instructions decl bb struct_typ actuals_ptr sender_ptr = 
+    let add_msg_instructions decl bb struct_typ actuals_ptr = 
         let actor_local_vars_copy = !local_vars in
         let actor_local_actors_copy = !local_actors in
         let msg_builder = L.builder_at_end context bb in
@@ -779,16 +734,12 @@ let translate (globals, functions, actors) =
         let _ = L.build_store casted_msgp local_msg_struct_p builder in
  *)
         let loaded_local_msg_struct = ret_message_struct in
-        (*let local_msg_struct_p = L.build_alloca msg_struct_type "" builder in*)
-
         let idx_case = L.build_struct_gep loaded_local_msg_struct 0 "" builder in 
-
-        let case = L.build_load idx_case "case_num" builder in (* i32 *)
-        let idx_actuals_ptr = L.build_struct_gep loaded_local_msg_struct 1 "" builder in (* *)
+        let case = L.build_load idx_case "case_num" builder in
+        let idx_actuals_ptr = L.build_struct_gep loaded_local_msg_struct 1 "" builder in
         let actuals_ptr = L.build_load idx_actuals_ptr "actuals_ptr" builder in 
-        let idx_sender_ptr = L.build_struct_gep loaded_local_msg_struct 2 "" builder in
-        let sender_ptr = L.build_load idx_sender_ptr "sender_ptr" builder in
-        (*raise(Failure("llvalue = "^(L.string_of_llvalue sender_ptr)));*)
+        (*let idx_sender_ptr = L.build_struct_gep loaded_local_msg_struct 2 "" builder in*)
+        (*let sender_ptr = L.build_load idx_sender_ptr "sender_ptr" builder in*)
 
         let cases = build_msg_blocks in
 
@@ -818,7 +769,7 @@ let translate (globals, functions, actors) =
         let add_msg_vars_body c decl = 
             let msg_bb = StringMap.find c bb_map in
             let mstruct_t = StringMap.find decl.A.mname msg_struct_types in
-            add_msg_instructions decl msg_bb mstruct_t actuals_ptr sender_ptr
+            add_msg_instructions decl msg_bb mstruct_t actuals_ptr
         in
         StringMap.iter add_msg_vars_body decl_map;
 
