@@ -14,12 +14,11 @@ dolphin(int weight, int length):
         int time
 
 func main() -> int:
-    print("Hello world!")
     actor d = new dolphin(5,10)
-
+    print("Made dolphin")
     // Testing which scope of msg formal args with same name
     //hello(5) | d
-    swim(1) | d
+    swim(55) | d
     // eat(1) | d
     // die() | d
 
