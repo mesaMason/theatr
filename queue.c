@@ -34,7 +34,7 @@ void enqueue(head *qhead, message_t message) {
   new_queue->next = qhead->queue; 
   qhead->queue = new_queue;
   printf("enqueue: qhead count = %d\n", qhead->count);
-  printf("enqueue: qhead @ %p\n", qhead);
+  printf("enqueue: qhead @ %p, case_num = %d\n", qhead, message.val);
   pthread_mutex_unlock(&qhead->lock);
 }
 
@@ -43,13 +43,13 @@ message_t dequeue(head *qhead) {
   message_t retmessage;
 
   printf("dequeueing\n");
-  printf("dequeue: qhead @ %p\n", qhead);
   pthread_mutex_lock(&qhead->lock);
 
   while (qhead->count == 0){
     printf("dequeue: waiting on condition variable, qhead count = %d\n", qhead->count);
     pthread_cond_wait(&qhead->count_cond, &qhead->lock);
   }
+
   current = qhead->queue;
 
   while (current->next != NULL) {
@@ -59,6 +59,7 @@ message_t dequeue(head *qhead) {
   }
 
   retmessage = current->message;
+  printf("dequeue: qhead @ %p, case_num = %d\n", qhead, retmessage.val);
   free(current);
 
   if (prev)
