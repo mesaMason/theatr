@@ -698,7 +698,6 @@ let translate (globals, functions, actors, structs) =
                 let _ = L.struct_set_body struct_type type_array false in
                 StringMap.add name struct_type m in
             List.fold_left msg_struct StringMap.empty adecl.A.receives in
- 
         (* pull message off queue and store the args struct pointer on the stack, 
            along with the message number*)
         
@@ -810,7 +809,11 @@ let translate (globals, functions, actors, structs) =
         ignore(L.build_br pred_bb finish_builder); (* Terminator for finish block *)
         
         (* Adds instructions and terminators for pred, body, and merge blocks *) 
+<<<<<<< HEAD
         let pred = L.const_int i1_t 0 in (* if 1, while loop runs *)
+=======
+        let pred = L.const_int i1_t 1 in (* if 1, while loop runs *)
+>>>>>>> 4dc341948fe5f10509f0373885b4f3563216b049
         let _ = build_pred_block pred  pred_bb pred_builder body_bb merge_bb in
         let _ = build_body_block body_bb body_builder finish_bb merge_bb in
         let _ = build_merge_block merge_bb merge_builder in

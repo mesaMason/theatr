@@ -5,7 +5,7 @@
 # Easiest way to build: using ocamlbuild, which in turn uses ocamlfind
 all : theatr.native queue.o
 theatr.native :
-	ocamlbuild -use-ocamlfind -pkgs llvm,llvm.analysis -cflags -w,+a-4 \
+	ocamlbuild -use-ocamlfind -pkgs llvm,llvm.analysis,llvm.bitreader,llvm.linker -cflags -w,+a-4 \
 		theatr.native
 
 # "make clean" removes all generated files
