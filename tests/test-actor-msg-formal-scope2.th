@@ -18,11 +18,11 @@ func main() -> int:
     actor d = new dolphin(5,10)
     
     // Test that formal args over-written at end of msg processing
-    // hello(5) | d 
-    // swim(20) | d
-    // swim(30) | d
-    // eat(10)  | d
-    // eat(15)  | d
-    // die()    | d
+    hello(5) | d 
+    swim(20) | d
+    swim(30) | d
+    eat(10)  | d
+    eat(15)  | d
+    die()    | d
     
     return 0

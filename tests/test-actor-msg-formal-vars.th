@@ -18,10 +18,10 @@ func main() -> int:
     actor d = new dolphin(5,10)
     
     // Tests that all formals are accessible
-    // hello(5) | d
-    // eat(40,2) | d
-    // swim(30) | d
-    // die() | d
+    hello(5) | d
+    eat(40,2) | d
+    swim(30) | d
+    die() | d
 
 
     return 0

@@ -37,14 +37,12 @@ func main() -> int:
     int age = 3
     actor d = new dolphin(weight, age)
     
-    print("new dolphin created.")
-
     // Testing formal args shadowing
-    // swim(13) | d
-    // eat(30) | d
-    // sleep(0) | d
-    // hello() | d
-    // die() | d
+    swim(13) | d
+    eat(30) | d
+    sleep(0) | d
+    hello() | d
+    die() | d
 
     return 0
 

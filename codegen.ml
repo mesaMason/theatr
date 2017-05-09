@@ -779,9 +779,6 @@ let translate (globals, functions, actors, structs) =
         let idx_case = L.build_struct_gep loaded_local_msg_struct 0 "" builder in 
 
         let case = L.build_load idx_case "case_num" builder in (* i32 *)
-        let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder in
-        let _ = L.build_call printf_func [| format_int_str; case |] "printf" builder in
-
         let idx_actuals_ptr = L.build_struct_gep loaded_local_msg_struct 1 "" builder in (* *)
         let actuals_ptr = L.build_load idx_actuals_ptr "actuals_ptr" builder in 
         let idx_sender_ptr = L.build_struct_gep loaded_local_msg_struct 2 "" builder in

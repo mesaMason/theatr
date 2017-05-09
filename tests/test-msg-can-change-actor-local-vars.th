@@ -27,7 +27,9 @@ func main() -> int:
     int weight = 10
     int age = 3
     actor d = new dolphin(weight, age)
-    
-    print("new dolphin created.")
+    sadfdsaf() | d
+    eat() | d
+    swim() | d
+    die() | d
     return 0
 
