@@ -83,7 +83,7 @@ let check (globals, functions, actors, structs) =
     {typ = Ptyp(Void); fname = "print_" ^ string_of_typ typ; formals = [(typ, "x")]; body = []})
   in
 
-  let print_typs = List.map format_print_decls [Ptyp(String); Ptyp(Int); Ptyp(Double); Ptyp(Bool)] in
+  let print_typs = List.map format_print_decls [Ptyp(String); Ptyp(Char); Ptyp(Int); Ptyp(Double); Ptyp(Bool)] in
   let built_in_decls = add_to_map StringMap.empty print_typs in
   
   (* Function declarations for named functions  *)
@@ -124,6 +124,7 @@ let check (globals, functions, actors, structs) =
     	IntLit _ -> Ptyp(Int)
       | DoubleLit _ -> Ptyp(Double)
       | StringLit _ -> Ptyp(String)
+      | CharLit _   -> Ptyp(Char)
       | BoolLit _ -> Ptyp(Bool)
       | Id s -> type_of_identifier s
       | ListC el -> (match el with

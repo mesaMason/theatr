@@ -1,0 +1,6 @@
+func main() -> int:
+    string mystring 
+    mystring = "string variable"
+    print(mystring)
+    print("string literal")
+    return 0
