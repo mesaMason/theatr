@@ -41,6 +41,7 @@ message_t dequeue(head *qhead) {
   message_t retmessage;
 
   printf("dequeueing\n");
+
   pthread_mutex_lock(&qhead->lock);
   while (qhead->count == 0){
     pthread_cond_wait(&qhead->count_cond, &qhead->lock);

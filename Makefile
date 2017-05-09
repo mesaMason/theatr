@@ -16,8 +16,9 @@ clean :
 	rm -rf testall.log *.diff theatr scanner.ml parser.ml parser.mli
 	rm -rf *.cmx *.cmi *.cmo *.cmx *.o
 	rm -rf *.ll *.ll	
-	rm -rf *.ll *.temp *.out *.err	
-	rm -rf *.exe *.s
+	rm -rf *.ll *.temp *.out *.err *.s *.exe	
+
+
 # More detailed: build using ocamlc/ocamlopt + ocamlfind to locate LLVM
 
 OBJS = ast.cmx codegen.cmx parser.cmx scanner.cmx semant.cmx theatr.cmx
