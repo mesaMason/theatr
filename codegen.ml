@@ -204,7 +204,7 @@ let translate (globals, functions, actors, structs) =
                                                             struct_message_t |] in
   let enqueue_func = L.declare_function "enqueue" enqueue_t the_module in
 
-  let dequeue_t = L.function_type (L.void_type context) [| L.pointer_type struct_message_t ; L.pointer_type struct_head_t |] in
+  let dequeue_t = L.function_type (struct_message_t) [| L.pointer_type struct_head_t |] in
   let dequeue_func = L.declare_function "dequeue" dequeue_t the_module in
 
   (* readonly properties not defined for the argument type to the function *)
@@ -265,7 +265,8 @@ let translate (globals, functions, actors, structs) =
   let actor_struct_types =
     let actor_struct m adecl =
       let list_arg_types = List.map (fun (t,_) -> ltype_of_typ t) adecl.A.aformals in
-      let list_arg_types = (L.pointer_type actor_address_struct_type) :: list_arg_types in
+      (* prepend the invisible argument of the index number of the actor *)
+      let list_arg_types = i32_t :: list_arg_types in
       let type_array = Array.of_list list_arg_types in
       let name = adecl.A.aname in
       let struct_type = L.named_struct_type context (name ^ "_struct") in
@@ -419,6 +420,9 @@ let translate (globals, functions, actors, structs) =
 
        (* get position in global actors array *)
        let curr_actor_count = L.build_load actor_count "curr_actor_count" builder in
+       let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder in
+       let _ = L.build_call printf_func [| format_int_str; curr_actor_count |] "printf" builder in
+
        let zero = L.const_int i32_t 0 in
        let addr_struct = L.build_in_bounds_gep global_actors
                          [| zero ; curr_actor_count |] "pos" builder in
@@ -432,23 +436,20 @@ let translate (globals, functions, actors, structs) =
        (* TODO: do a build_store to put the msg queue pointer into msgQueue *)
        let result = addr_struct in
        
-       (* increment actor count *)
-       let new_actor_count = L.build_add curr_actor_count (L.const_int i32_t 1) "" builder in
-       let _ = L.build_store new_actor_count actor_count builder in
-
        (* create the actor's function argument struct on the heap 
           this will be freed by the actor's pthread function after the args are 
           copied onto that thread's stack *)
        let a_struct = L.build_malloc a_struct_type "" builder in
-       (* fill in the struct with actuals *)
-       let actuals = addr_struct :: actuals in
+       (* fill in the struct with actuals, prepend the addr_struct as an invisible argument *)
+       let actuals = curr_actor_count :: actuals in
        let index_and_store idx actual =
          let ptr = L.build_struct_gep a_struct idx "" builder in
          let _ = L.build_store actual ptr builder in
          idx+1 in
        let _ = (match List.length actuals with
                   0 -> -1
-                | _ -> List.fold_left index_and_store 0 actuals) in
+                | _ -> List.fold_left index_and_store 0 actuals)
+       in
        let a_struct_ptr_casted = (match List.length actuals with
                                     0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
                                   | _ -> L.build_bitcast a_struct (L.pointer_type i8_t) "" builder) in
@@ -458,15 +459,25 @@ let translate (globals, functions, actors, structs) =
        let _ = L.build_call pthread_create_func pthread_args "pthread_create_result" builder in
        (* store the value of the tid into the actor_address_struct that you made before *)
        let tid_val = L.build_load pthread_pt "" builder in
+       let _ = L.build_call printf_func [| format_int_str; tid_val |] "printf" builder in
        let _ = L.build_store tid_val tid_in_struct builder in
+       (* increment actor count *)
+       let new_actor_count = L.build_add curr_actor_count (L.const_int i32_t 1) "" builder in
+       let _ = L.build_store new_actor_count actor_count builder in
        result
     | A.Send (msgFunction, msgArgs, recipientName) ->
        let llvalue = lookup recipientName in
-
        let addr_struct = L.build_load llvalue "addr_struct" builder in
+
+       let tid_p = L.build_struct_gep addr_struct 1 "tid_p" builder in
+       let tid_p_cast = L.build_bitcast tid_p (L.pointer_type i32_t) "" builder in
+       let tid_val = L.build_load tid_p_cast "tid_val" builder in
+       let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder in
+       let _ = L.build_call printf_func [| format_int_str; tid_val |] "printf" builder in
+
        let msgQueue_ptr_idx = L.build_struct_gep addr_struct 2 "msgQueue_ptr" builder in
-       (*let msgQueue_raw = L.build_load msgQueue_ptr_idx "msgQueue" builder in*)
-       let msgQueue = L.build_bitcast msgQueue_ptr_idx (L.pointer_type struct_head_t) "" builder in
+       let msgQueue_raw = L.build_load msgQueue_ptr_idx "msgQueue" builder in
+       let msgQueue = L.build_bitcast msgQueue_raw (L.pointer_type struct_head_t) "" builder in
        let message = L.build_alloca struct_message_t "" builder in
        let actuals = List.rev (List.map (expr builder) (List.rev msgArgs)) in
        let actuals_array = Array.of_list actuals in
@@ -560,9 +571,11 @@ let translate (globals, functions, actors, structs) =
     let load_struct = L.build_load local_struct_p "" builder in
     let var_at_idx = L.build_struct_gep load_struct 0 "" builder in
     let var_stored = L.build_load var_at_idx "" builder in
-    let local = L.build_alloca (L.pointer_type actor_address_struct_type) "self_addr-struct" builder in
+    let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder in
+    let _ = L.build_call printf_func [| format_int_str; var_stored |] "printf" builder in
+    let local = L.build_alloca i32_t "self_index" builder in
     ignore (L.build_store var_stored local builder);
-    local_vars := StringMap.add "self:addr_struct" local !local_vars;
+    local_vars := StringMap.add "self:index" local !local_vars;
 
     (* create the formals as local variables, add them to locals map *)
     let add_formal (idx, struct_p) (t, n) = 
@@ -738,13 +751,26 @@ let translate (globals, functions, actors, structs) =
            along with the message number*)
         
         (* TODO: here we add calls to dequeue the next msg from msgqueue *)
-        let self_addr_struct_p = lookup "self:addr_struct" in
-        let self_addr_struct = L.build_load self_addr_struct_p "loaded_addr_struct" builder in
-        let msg_queue_p = L.build_struct_gep self_addr_struct 2 "" builder in
-        let head = L.build_bitcast msg_queue_p (L.pointer_type struct_head_t) "head" builder in
-        let ret_message_struct = L.build_alloca struct_message_t "message_struct" builder in        
-        let _ = L.build_call dequeue_func [| ret_message_struct ; head |] "" builder in
+        let self_index = lookup "self:index" in
+        let self_index_val = L.build_load self_index "self:index_val" builder in
+        let _ = L.build_call printf_func [| format_int_str; self_index_val |] "printf" builder in
 
+        let zero = L.const_int i32_t 0 in
+        let self_addr_struct = L.build_in_bounds_gep global_actors
+                               [| zero ; self_index_val |] "pos" builder in
+
+        let tid_p = L.build_struct_gep self_addr_struct 1 "tid_p" builder in
+        let tid_p_cast = L.build_bitcast tid_p (L.pointer_type i32_t) "" builder in
+        let tid_val = L.build_load tid_p_cast "tid_val" builder in
+        let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder in
+        let _ = L.build_call printf_func [| format_int_str; tid_val |] "printf" builder in
+
+        let msgQueue_ptr_idx = L.build_struct_gep self_addr_struct 2 "" builder in
+        let msgQueue_raw = L.build_load msgQueue_ptr_idx "" builder in
+        let msgQueue = L.build_bitcast msgQueue_raw (L.pointer_type struct_head_t) "" builder in
+        let ret_message_struct = L.build_alloca struct_message_t "message_struct" builder in        
+        let ret_call = L.build_call dequeue_func [| msgQueue |] "dequeue_func_return" builder in
+        let _ = L.build_store ret_call ret_message_struct builder in
 (*        
         (* TODO: get the actual msg pointer *)
         let local_msgp = L.build_alloca (L.pointer_type i8_t) "local_msg_p" builder in

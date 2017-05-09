@@ -17,7 +17,7 @@ head *initialize_queue() {
   ret = pthread_cond_init(&qhead->count_cond, NULL);
   if (ret)
     perror("Error in initializing the count wait variable");
-
+  printf("initialize: qhead @ %p\n", qhead);
   return qhead;
 }
   
@@ -34,6 +34,7 @@ void enqueue(head *qhead, message_t message) {
   new_queue->next = qhead->queue; 
   qhead->queue = new_queue;
   printf("enqueue: qhead count = %d\n", qhead->count);
+  printf("enqueue: qhead @ %p\n", qhead);
   pthread_mutex_unlock(&qhead->lock);
 }
 
@@ -42,19 +43,21 @@ message_t dequeue(head *qhead) {
   message_t retmessage;
 
   printf("dequeueing\n");
-
+  printf("dequeue: qhead @ %p\n", qhead);
   pthread_mutex_lock(&qhead->lock);
+
   while (qhead->count == 0){
     printf("dequeue: waiting on condition variable, qhead count = %d\n", qhead->count);
     pthread_cond_wait(&qhead->count_cond, &qhead->lock);
   }
   current = qhead->queue;
-  printf("dequeue: got qhead from queue\n");
+
   while (current->next != NULL) {
+    //    printf("curr->next is null, stepping...\n");
     prev = current;
     current = current->next;
   }
-  printf("dequeue: inside lock\n");
+
   retmessage = current->message;
   free(current);
 

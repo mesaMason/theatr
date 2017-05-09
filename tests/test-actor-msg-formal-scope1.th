@@ -1,4 +1,6 @@
 dolphin(int weight, int length):
+    print(weight)
+    print(length)
     receive:
         eat(int num):
             num = 5 + num
