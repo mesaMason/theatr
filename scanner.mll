@@ -14,8 +14,9 @@
 let digit = ['0'-'9']
 let double = ('-'?)((digit+'.'digit*) | ('.'digit+))
 let simp_chr = [' '-'!' '#'-'&' '('-'[' ']'-'~']
+
+
 let esc_chr = ['t' 'n' 'r' '\'' '\"' '\\']
-let str = ( simp_chr | '\\' esc_chr ) as s
 
 rule token = parse
   [' ' '\t' '\r' '\n'] { token lexbuf } (* Whitespace *)
@@ -65,21 +66,41 @@ rule token = parse
 | "void"   { VOID }
 | "true"   { TRUE }
 | "false"  { FALSE }
-| "string" { STRING }
 | "char"   { CHAR }
+| "string" { STRING }
 
 (* Literals *)
 | digit+ as lxm { INTLIT(int_of_string lxm) }
 | double as lxm { DOUBLELIT(float_of_string lxm)}
-| "\"" ((simp_chr | '\\' esc_chr)* as lxm) "\"" { STRINGLIT(lxm) }
 | '\'' (simp_chr as lxm) '\'' { CHARLIT(lxm) }
 | "'\\" (esc_chr as ec) "'" { CHARLIT(make_char ec) }
+| '"'      { read_string (Buffer.create 17) lexbuf }
 
 (* Identifiers *)
 | ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* as lxm { ID(lxm) }
 
 | eof { EOF }
 | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
+
+(* From: realworldocaml.org/v1/en/html/parsing-with-ocamllex-and-menhir.html *)
+and read_string buf =
+  parse
+  | '"'       { STRINGLIT (Buffer.contents buf) }
+  | '\\' '/'  { Buffer.add_char buf '/'; read_string buf lexbuf }
+  | '\\' '\\' { Buffer.add_char buf '\\'; read_string buf lexbuf }
+  | '\\' 'b'  { Buffer.add_char buf '\b'; read_string buf lexbuf }
+  | '\\' 'f'  { Buffer.add_char buf '\012'; read_string buf lexbuf }
+  | '\\' 'n'  { Buffer.add_char buf '\n'; read_string buf lexbuf }
+  | '\\' 'r'  { Buffer.add_char buf '\r'; read_string buf lexbuf }
+  | '\\' 't'  { Buffer.add_char buf '\t'; read_string buf lexbuf }
+  | '\\' '\"' { Buffer.add_char buf '\"'; read_string buf lexbuf }
+  | [^ '"' '\\']+
+    { Buffer.add_string buf (Lexing.lexeme lexbuf);
+      read_string buf lexbuf
+    }
+    
+  | _ as char { raise (Failure("illegal string character: " ^ Lexing.lexeme lexbuf)) }
+  | eof { raise (Failure("String is not terminated")) }
 
 
 and comment = parse
