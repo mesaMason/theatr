@@ -25,7 +25,6 @@ let translate (globals, functions, actors, structs) =
   (* list of tids of actors that have been instantiated. This is a reference - 
      not the functional way of doing it - but was easiest way to keep track of 
      actors that have been created *)
-  let active_tids = ref [] in
   let max_actors = 1024 in
 
   (* create message struct of 
@@ -112,31 +111,37 @@ let translate (globals, functions, actors, structs) =
     match typ with 
     | "double"    -> L.build_fcmp L.Fcmp.Oeq
     | "i32"       -> L.build_icmp L.Icmp.Eq
+    | _ -> raise(Failure("incompatible type equality: "^typ))
   in
   let handle_neq typ =
     match typ with 
     | "double"    -> L.build_fcmp L.Fcmp.One
     | "i32"    -> L.build_icmp L.Icmp.Ne
+    | _ -> raise(Failure("incompatible type neg: " ^typ))
   in
   let handle_less typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Olt
     | "i32"    -> L.build_icmp L.Icmp.Slt
+    | _ -> raise(Failure("incompatible type less than: " ^typ))
   in
   let handle_leq typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Ole
     | "i32"    -> L.build_icmp L.Icmp.Sle
+    | _ -> raise(Failure("incompatible type less than equal to: " ^typ))
   in
   let handle_greater typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Ogt
     | "i32"    -> L.build_icmp L.Icmp.Sgt
+    | _ -> raise(Failure("incompatible type greater than: " ^typ))
   in
   let handle_geq typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Oge
     | "i32"    -> L.build_icmp L.Icmp.Sge
+    | _ -> raise(Failure("incompatible type greater than equal to: " ^typ))
   in
   let handle_comp_binop op typ1 typ2 =
     match typ1 with
@@ -159,6 +164,7 @@ let translate (globals, functions, actors, structs) =
       (* let _ = L.struct_set_body struct_type type_array false in *)
       (* StringMap.add name struct_type m in *)
 
+(*
   let struct_decls = 
     let struct_t m sd =
       let list_arg_types = List.map (fun (t,_)-> ltype_of_typ t) sd.A.elements in
@@ -168,6 +174,7 @@ let translate (globals, functions, actors, structs) =
       let _ = L.struct_set_body struct_type type_array false in
       StringMap.add sd.A.name struct_type m in
     List.fold_left struct_t StringMap.empty structs in
+ *)
 
   (* define struct types for queue related functions *)
   let struct_message_t = L.named_struct_type context "struct.message" in
@@ -179,24 +186,24 @@ let translate (globals, functions, actors, structs) =
   let struct_head_t = L.named_struct_type context "struct.head" in
   let _ =
     let struct_anon_t = L.named_struct_type context "struct.anon" in
-    ignore(L.struct_set_body struct_anon_t [| L.i32_type context ; L.i32_type context ; L.i64_type context ; L.i64_type context ; L.i64_type context ; L.pointer_type i8_t ; L.i32_type context ; L.i32_type context |]);
+    ignore(L.struct_set_body struct_anon_t [| L.i32_type context ; L.i32_type context ; L.i64_type context ; L.i64_type context ; L.i64_type context ; L.pointer_type i8_t ; L.i32_type context ; L.i32_type context |] false);
     
     let union_pthread_cond_t = L.named_struct_type context "union.pthread_cond_t" in
-    ignore(L.struct_set_body union_pthread_cond_t [| struct_anon_t ; L.array_type (L.pointer_type i8_t) 4 |]);
+    ignore(L.struct_set_body union_pthread_cond_t [| struct_anon_t ; L.array_type (L.pointer_type i8_t) 4 |] false);
     
     let struct__pthread_internal_slist = L.named_struct_type context "struct.__pthread_internal_slist" in
-    ignore(L.struct_set_body struct__pthread_internal_slist [| L.pointer_type struct__pthread_internal_slist |]);
+    ignore(L.struct_set_body struct__pthread_internal_slist [| L.pointer_type struct__pthread_internal_slist |] false);
     
     let union_anon_t = L.named_struct_type context "union.anon" in
-    ignore(L.struct_set_body union_anon_t [| struct__pthread_internal_slist |]);
+    ignore(L.struct_set_body union_anon_t [| struct__pthread_internal_slist |] false);
     
     let struct___pthread_mutex_s_t = L.named_struct_type context "struct.__pthread_mutex_s"  in
-    ignore(L.struct_set_body struct___pthread_mutex_s_t [| L.i32_type context ; L.i32_type context ; L.i32_type context ; L.i32_type context ; L.i32_type context ; union_anon_t |]);
+    ignore(L.struct_set_body struct___pthread_mutex_s_t [| L.i32_type context ; L.i32_type context ; L.i32_type context ; L.i32_type context ; L.i32_type context ; union_anon_t |] false);
 
     let union_pthread_mutex_t_t = L.named_struct_type context "union.pthread_mutex_t" in
-    ignore(L.struct_set_body union_pthread_mutex_t_t [| struct___pthread_mutex_s_t |]);
+    ignore(L.struct_set_body union_pthread_mutex_t_t [| struct___pthread_mutex_s_t |] false);
 
-    ignore(L.struct_set_body struct_head_t [| L.pointer_type struct_queue_t ; union_pthread_cond_t ; union_pthread_mutex_t_t |]);
+    ignore(L.struct_set_body struct_head_t [| L.pointer_type struct_queue_t ; union_pthread_cond_t ; union_pthread_mutex_t_t |] false);
   in
 
   let initialize_queue_t = L.function_type (L.pointer_type struct_head_t) [||] in
@@ -210,9 +217,10 @@ let translate (globals, functions, actors, structs) =
   let dequeue_func = L.declare_function "dequeue" dequeue_t the_module in
 
   (* readonly properties not defined for the argument type to the function *)
+(*
   let llvm_memcpy_t = L.function_type (L.void_type context) [| L.pointer_type i8_t ; L.pointer_type i8_t ; i32_t ; i32_t ; i1_t |] in
   let llvm_memcpy = L.declare_function "llvm_memcpy" llvm_memcpy_t the_module in
-
+ *)
   (********* END of define variable for queu related function **************)
 
   (* Declare each global variable; remember its value in a map *)
@@ -224,7 +232,7 @@ let translate (globals, functions, actors, structs) =
 
   let global_actor_vars =
     let global_actor_var m (t, n) = match t with
-      | A.Ptyp(Actor) -> 
+      | A.Ptyp(A.Actor) -> 
          let llvalue = StringMap.find n global_vars in
          StringMap.add n (llvalue, StringMap.empty) m
       | _ -> m
@@ -334,7 +342,7 @@ let translate (globals, functions, actors, structs) =
     | A.Assign (s, e) -> let e' = expr builder e in
 	                 ignore (L.build_store e' (lookup s) builder);
                          (match e with
-                         | A.NewActor(a, act) ->
+                         | A.NewActor(a, _) ->
                             (* update the actor's funcMap now that we know the actual actor type *)
                             let (_, _, funcMap) = StringMap.find a actor_decls in
                             let (llvalue, _) = alookup s in
@@ -411,7 +419,7 @@ let translate (globals, functions, actors, structs) =
     | A.Call (f, act) ->
        let (fdef, fdecl) = StringMap.find f function_decls in
        let actuals = List.rev (List.map (expr builder) (List.rev act)) in
-       let result = (match fdecl.A.typ with A.Ptyp(Void) -> ""
+       let result = (match fdecl.A.typ with A.Ptyp(A.Void) -> ""
                                           | _ -> f ^ "_result") in
        L.build_call fdef (Array.of_list actuals) result builder
     (* codegen for actors: create a new struct on the stack to store arguments
@@ -420,7 +428,7 @@ let translate (globals, functions, actors, structs) =
     | A.NewActor (a, act) ->
        (* TODO: generate code to check if max_actors has been reached 
           and create a codepath to do something if no more actors allowed *)
-       let (adef, adecl, _) = StringMap.find a actor_decls in
+       let (adef, _, _) = StringMap.find a actor_decls in
        let a_struct_type = StringMap.find a actor_struct_types in
        let actuals = List.rev (List.map (expr builder) (List.rev act)) in
 
@@ -471,10 +479,6 @@ let translate (globals, functions, actors, structs) =
     | A.Send (msgFunction, msgArgs, recipientName) ->
        let llvalue = lookup recipientName in
        let addr_struct = L.build_load llvalue "addr_struct" builder in
-
-       let tid_p = L.build_struct_gep addr_struct 1 "tid_p" builder in
-       let tid_p_cast = L.build_bitcast tid_p (L.pointer_type i32_t) "" builder in
-       let tid_val = L.build_load tid_p_cast "tid_val" builder in
 
        let msgQueue_ptr_idx = L.build_struct_gep addr_struct 2 "msgQueue_ptr" builder in
        let msgQueue_raw = L.build_load msgQueue_ptr_idx "msgQueue" builder in
@@ -527,8 +531,6 @@ let translate (globals, functions, actors, structs) =
        let msg_case_ptr = L.build_struct_gep message 0 "" builder in
        let msg_arg_struct_ptr = L.build_struct_gep message 1 "" builder in
        let msg_sender_ptr = L.build_struct_gep message 2 "" builder in
-       let msg_case = L.build_load msg_case_ptr "" builder in
-       let msg_arg_struct = L.build_load msg_arg_struct_ptr "" builder in
        let _ = L.build_store case_val msg_case_ptr builder in
        let _ = L.build_store argument_struct_casted msg_arg_struct_ptr builder in
        let _ = L.build_store sender_ptr msg_sender_ptr builder in
@@ -537,6 +539,7 @@ let translate (globals, functions, actors, structs) =
        (*raise(Failure("msgQueue = "^L.string_of_llvalue(msgQueue)));*)
        let _ = L.build_call enqueue_func [| msgQueue ; message_val |] "" builder in
        L.const_int i32_t 1
+    | _ -> raise(Failure("Unknown expr type"))
   in
 
 
@@ -603,7 +606,7 @@ let translate (globals, functions, actors, structs) =
     in
     let _ = List.fold_left add_formal (1, local_struct_p) adecl.A.aformals in
     List.iter add_local adecl.A.alocals;
-    L.build_free voidp builder; (* free the malloc'd function arguments struct *)
+    ignore(L.build_free voidp builder); (* free the malloc'd function arguments struct *)
   
     (* Invoke "f builder" if the current block doesn't already
        have a terminal (e.g., a branch). *)
@@ -650,6 +653,7 @@ let translate (globals, functions, actors, structs) =
 
       | A.For (e1, e2, e3, body) -> stmt builder
       ( A.Block [A.Expr e1 ; A.While (e2, A.Block [body ; A.Expr e3]) ] )
+      | _ -> raise(Failure("invalid stmt in actor decl"))
     in
 
     (* Execute actor's local statements *)
@@ -756,10 +760,6 @@ let translate (globals, functions, actors, structs) =
         let zero = L.const_int i32_t 0 in
         let self_addr_struct = L.build_in_bounds_gep global_actors
                                [| zero ; self_index_val |] "pos" builder in
-
-        let tid_p = L.build_struct_gep self_addr_struct 1 "tid_p" builder in
-        let tid_p_cast = L.build_bitcast tid_p (L.pointer_type i32_t) "" builder in
-        let tid_val = L.build_load tid_p_cast "tid_val" builder in
 
         let msgQueue_ptr_idx = L.build_struct_gep self_addr_struct 2 "" builder in
         let msgQueue_raw = L.build_load msgQueue_ptr_idx "" builder in
@@ -963,8 +963,8 @@ let translate (globals, functions, actors, structs) =
              let tid_val = L.build_load tid_p_cast "tid_val" builder in
              let join_attr = L.const_bitcast (L.const_pointer_null i8_t)
                              (L.pointer_type (L.pointer_type i8_t)) in
-             L.build_call pthread_join_func [| tid_val ; join_attr |] "pthread_join_result" builder;
-             stmt builder (A.Expr e3);
+             ignore(L.build_call pthread_join_func [| tid_val ; join_attr |] "pthread_join_result" builder);
+             ignore(stmt builder (A.Expr e3));
              add_terminal builder (L.build_br pred_bb);
              let pred_builder = L.builder_at_end context pred_bb in
              let bool_val = expr pred_builder e2 in
@@ -975,7 +975,7 @@ let translate (globals, functions, actors, structs) =
              builder
          in
          ignore (match fdecl.A.typ with
-	    A.Ptyp(Void) -> L.build_ret_void builder
+	    A.Ptyp(A.Void) -> L.build_ret_void builder
 	  | _ -> L.build_ret (expr builder e) builder); builder
       | A.Sdef s -> ignore (s); builder
       | A.If (predicate, then_stmt, else_stmt) ->
@@ -1017,7 +1017,7 @@ let translate (globals, functions, actors, structs) =
 
     (* Add a return if the last block falls off the end *)
     add_terminal builder (match fdecl.A.typ with
-                          | A.Ptyp(Void) -> L.build_ret_void
+                          | A.Ptyp(A.Void) -> L.build_ret_void
                           | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
   in
   List.iter build_function_body functions;

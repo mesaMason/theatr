@@ -1,17 +1,17 @@
 inside dolphin.
-dolphin's local sum var =
+dolphins local sum var =
 13
 inside swim().
-dolphin's hours =
+dolphins hours =
 0
 inside eat().
-eat()'s formal weight =
+eat()s formal weight =
 30
 inside sleep().
-sleep()'s local sum =
+sleep()s local sum =
 0
 inside drop().
-dolphin's formal weight =
+dolphins formal weight =
 10
-dolphin's local sum =
+dolphins local sum =
 13

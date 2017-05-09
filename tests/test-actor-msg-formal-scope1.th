@@ -2,11 +2,11 @@ dolphin(int weight, int length):
     receive:
         eat(int num):
             num = 5 + num
-            print("eat()'s new num = ")
+            print("eat()s new num = ")
             print(num)
         swim(int num):
             num = 10 + num
-            print("swim()'s new num = ")
+            print("swim()s new num = ")
             print(num)
     drop:
         print("inside drop()")
