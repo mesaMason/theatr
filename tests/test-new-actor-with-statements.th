@@ -8,7 +8,7 @@ dolphin(int weight, int age):
         eat(int food):
             weight = weight + food
     drop:
-        return;
+        print("inside drop()")
     after:
         return;
         
@@ -19,9 +19,6 @@ func main() -> int:
     age = 3;
     actor d
     d = new dolphin(weight, age)    
-    weight = 44
-    age = 60
-    d = new dolphin(weight, age)
-    print("new dolphin created")
+    die() | d
     return 0
 

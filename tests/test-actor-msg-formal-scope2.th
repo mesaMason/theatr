@@ -1,0 +1,28 @@
+dolphin(int weight, int length):
+    receive:
+        eat(int num):
+            num = 5 + num
+            print("eat()'s new num = ")
+            print(num)
+        swim(int num):
+            num = 10 + num
+            print("swim()'s new num = ")
+            print(num)
+    drop:
+        print("inside drop()")
+    after:
+        int time
+
+func main() -> int:
+    print("Hello world!")
+    actor d = new dolphin(5,10)
+    
+    // Test that formal args over-written at end of msg processing
+    hello(5) | d 
+    swim(20) | d
+    swim(30) | d
+    eat(10)  | d
+    eat(15)  | d
+    die()    | d
+    
+    return 0

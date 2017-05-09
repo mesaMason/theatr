@@ -1,0 +1,27 @@
+dolphin(int weight, int length):
+    receive:
+        eat(int num, int hours):
+            print("eat()'s formal num = ")
+            print(num)
+            print("eat()'s formal hours = ")
+            print(hours)
+        swim(int num):
+            print("swim()'s formal num = ")
+            print(num)
+    drop:
+        print("inside drop()")
+    after:
+        int time
+
+func main() -> int:
+    print("Hello world!")
+    actor d = new dolphin(5,10)
+    
+    // Tests that all formals are accessible
+    hello(5) | d
+    eat(40,2) | d
+    swim(30) | d
+    die() | d
+
+
+    return 0

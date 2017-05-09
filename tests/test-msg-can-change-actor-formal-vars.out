@@ -1,0 +1,12 @@
+inside dolphin.
+weight = 
+10
+inside drop().
+weight = 
+11
+inside eat().
+weight = 
+12
+inside swim().
+weight = 
+12

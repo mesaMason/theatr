@@ -1,0 +1,28 @@
+dolphin(int weight, int age):
+    print("inside dolphin.")
+    receive:
+        swim():
+            int s = 1
+            print("swim()'s local var:")
+            print(s)
+        eat():
+            int e = 2
+            print("eat()'s local var:")
+            print(e)
+    drop:
+        int d = 0
+        print("drop()'s local var:")
+        print(d)
+    after:
+        return;
+        
+func main() -> int:
+    int weight = 10
+    int age = 3
+    actor d = new dolphin(weight, age)
+    asdfasodfasdf() | d
+    eat() | d
+    swim() | d
+    die() | d
+    return 0
+
