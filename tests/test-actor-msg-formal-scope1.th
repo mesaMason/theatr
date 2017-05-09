@@ -18,8 +18,8 @@ func main() -> int:
     actor d = new dolphin(5,10)
 
     // Testing which scope of msg formal args with same name
-    // hello(5) | d
-    // swim(1) | d
+    //hello(5) | d
+    swim(1) | d
     // eat(1) | d
     // die() | d
 
