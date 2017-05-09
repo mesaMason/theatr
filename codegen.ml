@@ -7,9 +7,6 @@ Detailed documentation on the OCaml LLVM library:
 http://llvm.moe/
 http://llvm.moe/ocaml/
 *)
-open Llvm.MemoryBuffer
-open Llvm_bitreader
-
 module L = Llvm
 module A = Ast
 
@@ -980,11 +977,4 @@ let translate (globals, functions, actors, structs) =
                           | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
   in
   List.iter build_function_body functions;
-  let linker filename =
-    let llctx = Llvm.global_context () in
-    let llmem = Llvm.MemoryBuffer.of_file filename in
-    let llm = Llvm_bitreader.parse_bitcode llctx llmem in
-    ignore(Llvm_linker.link_modules the_module llm)
-  in
-  linker "queue/queue.bc";
   the_module

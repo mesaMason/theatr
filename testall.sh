@@ -8,6 +8,8 @@
 PRE="./preprocessor.py"
 THEATR="./theatr.native"
 LLI="lli"
+LLC="llc"
+CC="cc"
 
 # Set time limit for all operations
 ulimit -t 30
@@ -80,11 +82,13 @@ Check() {
 
     generatedfiles=""
 
-    generatedfiles="$generatedfiles ${basename}.ll ${basename}.out" &&
+    generatedfiles="$generatedfiles ${basename}.ll ${basename}.s ${basename}.exe ${basename}.out" &&
 
     Run "$PRE" $1 "${basename}.temp" &&
     Run "$THEATR" "<" "${basename}.temp" ">" "${basename}.ll" &&    
-    Run "$LLI" "${basename}.ll" ">" "${basename}.out" &&
+    Run "$LLC" "${basename}.ll" ">" "${basename}.s" &&
+    Run "$CC" "-pthread" "-o" "${basename}.exe" "${basename}.s" "queue.o" &&
+    Run "./${basename}.exe" > "${basename}.out" &&
     Compare ${basename}.out ${reffile}.out ${basename}.diff
 
     # Report the status an"${basename}.temp"d clean up the generated files
