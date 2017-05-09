@@ -12,7 +12,7 @@ module A = Ast
 
 module StringMap = Map.Make(String)
 
-let translate (globals, functions, actors, structs) =
+let translate (globals, functions, actors) =
   let context = L.global_context () in
   let the_module = L.create_module context "Theatr"
   and i32_t  = L.i32_type  context
@@ -620,7 +620,6 @@ let translate (globals, functions, actors, structs) =
       | A.Expr e -> ignore (expr builder e); builder
       | A.Vdecl v -> ignore (v); builder (* we've already added this to locals *)
       | A.Vdef v -> ignore (expr builder v.A.vvalue); builder
-      | A.Sdef s -> ignore (s); builder
       | A.If (predicate, then_stmt, else_stmt) ->
          let bool_val = expr builder predicate in
          let merge_bb = L.append_block context "merge" the_function in
@@ -977,7 +976,6 @@ let translate (globals, functions, actors, structs) =
          ignore (match fdecl.A.typ with
 	    A.Ptyp(A.Void) -> L.build_ret_void builder
 	  | _ -> L.build_ret (expr builder e) builder); builder
-      | A.Sdef s -> ignore (s); builder
       | A.If (predicate, then_stmt, else_stmt) ->
          let bool_val = expr builder predicate in
          let merge_bb = L.append_block context "merge" the_function in

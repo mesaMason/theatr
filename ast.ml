@@ -13,11 +13,6 @@ type typ = Ptyp of ptyp | Ctyp of ctyp * ptyp
   
 type bind = typ * string
 
-type sdecl = {
-    name : string;
-    elements : bind list
-  }
-
 type expr =
     IntLit of int
   | DoubleLit of float
@@ -41,18 +36,11 @@ type vdef = {
     vvalue : expr;
   }
 
-type sdef  = {
-    sname : string;
-    styp : string;
-    svalue : vdef list;
-  }
-               
 type stmt =
     Block of stmt list
   | Expr of expr
   | Vdecl of bind
   | Vdef of vdef
-  | Sdef of sdef
   | Return of expr
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
@@ -86,7 +74,7 @@ type actor_decl = {
 
   
 (* a struct can only be defined in a global context just like actor or functions*)	
-type program = bind list * func_decl list * actor_decl list * sdecl list
+type program = bind list * func_decl list * actor_decl list
 
 (* Pretty-printing functions *)
 
@@ -159,7 +147,6 @@ let rec string_of_stmt = function
   | Expr(expr) -> string_of_expr expr ^ ";\n"
   | Vdecl((t, id)) -> string_of_vdecl (t, id) ^ "\n";
   | Vdef(vdef) -> string_of_vdef vdef ^ ";\n"
-  | Sdef(sdef) -> "struct " ^ sdef.sname ^ " = new " ^ sdef.styp ^ "()\n"
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
   | If(e, s, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
   | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
@@ -193,11 +180,8 @@ let string_of_adecl adecl =
   "\nafter:\n" ^ String.concat "" (List.map string_of_stmt adecl.after.dabody) ^
   "}\n"
 
-let string_of_sdecl sdecl =
-  "struct " ^ sdecl.name ^ " {\n" ^  String.concat "\n" (List.map string_of_vdecl sdecl.elements) ^ "\n}" 
-
-let string_of_program (vars, funcs, actors, structs) =
+let string_of_program (vars, funcs, actors) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
-  String.concat "\n" (List.map string_of_adecl actors) ^ "\n" ^
-  String.concat "\n" (List.map string_of_sdecl structs) ^ "\n"
+  String.concat "\n" (List.map string_of_adecl actors) ^ "\n"
+

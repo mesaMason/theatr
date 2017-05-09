@@ -32,8 +32,6 @@ rule token = parse
 | "func"   { FUNC_DECL }
 | "new"    { NEW }
 | "actor"  { ACTOR }
-| "struct" { STRUCT }
-| '.'      { DOT }
 | '|'      { PIPE }
 | ':'      { COLON }
 | ';'      { SEMI }
