@@ -221,6 +221,15 @@ let translate (globals, functions, actors, structs) =
       in StringMap.add n (L.define_global n init the_module) m in
     List.fold_left global_var StringMap.empty globals in
 
+  let global_actor_vars =
+    let global_actor_var m (t, n) = match t with
+      | A.Ptyp(Actor) -> 
+         let llvalue = StringMap.find n global_vars in
+         StringMap.add n (llvalue, StringMap.empty) m
+      | _ -> m
+    in                         
+    List.fold_left global_actor_var StringMap.empty globals in
+
   (* Declare printf(), which the print built-in function will call *)
   let printf_t = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
   let printf_func = L.declare_function "printf" printf_t the_module in
@@ -270,17 +279,28 @@ let translate (globals, functions, actors, structs) =
      on its thread's stack *)
   let actor_decls =
     let actor_decl m adecl =
-      let name = adecl.A.aname
-      in let atype = L.function_type (L.pointer_type i8_t) [|L.pointer_type i8_t|] in
+      let name = adecl.A.aname in
+      let atype = L.function_type (L.pointer_type i8_t) [|L.pointer_type i8_t|] in
       (* type of the function is void function(void star), for pthread *)
-      StringMap.add name (L.define_function name atype the_module, adecl) m in
+      let count_mdecl (count, m) decl = 
+        let m = StringMap.add decl.A.mname count m in
+        (count+1, m)
+      in
+      let (_, funcMap) = List.fold_left count_mdecl (1, StringMap.empty) adecl.A.receives in
+      StringMap.add name (L.define_function name atype the_module, adecl, funcMap) m in
     List.fold_left actor_decl StringMap.empty actors in
   
+  let local_actors = ref StringMap.empty in
   let local_vars = ref StringMap.empty in
   let lookup n = try StringMap.find n !local_vars
                  with Not_found -> try StringMap.find n global_vars
                                    with Not_found -> raise (Failure ("undeclared variable " ^ n))
   in
+  let alookup n = try StringMap.find n !local_actors
+                 with Not_found -> try StringMap.find n global_actor_vars
+                                   with Not_found -> raise (Failure ("undeclared actor " ^ n))
+  in
+  
   let rec expr builder = function
       A.IntLit i -> L.const_int i32_t i
     | A.DoubleLit f -> L.const_float d_t f
@@ -308,7 +328,14 @@ let translate (globals, functions, actors, structs) =
           A.Neg     -> L.build_neg
         | A.Not     -> L.build_not) e' "tmp" builder
     | A.Assign (s, e) -> let e' = expr builder e in
-	                 ignore (L.build_store e' (lookup s) builder); e'
+	                 ignore (L.build_store e' (lookup s) builder);
+                         (match e with
+                         | A.NewActor(a, act) ->
+                            (* update the actor's funcMap now that we know the actual actor type *)
+                            let (_, _, funcMap) = StringMap.find a actor_decls in
+                            let (llvalue, _) = alookup s in
+                            let _ = StringMap.add a (llvalue, funcMap) in ()
+                         | _ -> ()); e'
     | A.Call("pthread_create", actuals) ->
        let f = (match (List.hd actuals) with 
                   A.Id s -> s
@@ -386,7 +413,7 @@ let translate (globals, functions, actors, structs) =
     | A.NewActor (a, act) ->
        (* TODO: generate code to check if max_actors has been reached 
           and create a codepath to do something if no more actors allowed *)
-       let (adef, adecl) = StringMap.find a actor_decls in
+       let (adef, adecl, _) = StringMap.find a actor_decls in
        let a_struct_type = StringMap.find a actor_struct_types in
        let actuals = List.rev (List.map (expr builder) (List.rev act)) in
 
@@ -461,7 +488,15 @@ let translate (globals, functions, actors, structs) =
        let _ = L.build_store argument_struct_casted argument_struct_ptr builder in
        let sender_ptr_ptr = L.build_struct_gep message 2 "" builder in
        let _ = L.build_store sender_ptr sender_ptr_ptr builder in *)
-       let match_case_ptr = (L.const_int i32_t 1) in (* TODO: change this to match case number *)
+       
+       let case_num = match msgFunction with
+         | "die" -> 0
+         | _ -> let (_, funcMap) = try alookup recipientName
+                                   with Not_found -> raise (Failure ("undeclared actor " ^ recipientName)) in
+                try StringMap.find msgFunction funcMap
+                with Not_found -> -1
+       in
+       let match_case_ptr = (L.const_int i32_t case_num) in (* TODO: change this to match case number *)
        let _ = L.build_call enqueue_func [| msgQueue_ptr ; match_case_ptr ; argument_struct_casted ; sender_ptr |] in
        L.const_int i32_t 1
   in
@@ -469,7 +504,7 @@ let translate (globals, functions, actors, structs) =
 
   (* Fill in the body of the each actor's thread function *)
   let build_actor_thread_func_body adecl =
-    let (the_function, _) = StringMap.find adecl.A.aname actor_decls in
+    let (the_function, _, _) = StringMap.find adecl.A.aname actor_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
     (* Construct the thread function's "locals": 
        Since this function is passed into pthread, it will have to 
@@ -493,7 +528,8 @@ let translate (globals, functions, actors, structs) =
     let casted_voidp = L.build_bitcast loaded_voidp (L.pointer_type struct_type) "" builder in
     let _ = L.build_store casted_voidp local_struct_p builder in
     local_vars := StringMap.empty;
-
+    local_actors := StringMap.empty;
+    
     (* create the formals as local variables, add them to locals map *)
     let add_formal (idx, struct_p) (t, n) = 
       let load_struct = L.build_load struct_p "" builder in
@@ -504,14 +540,18 @@ let translate (globals, functions, actors, structs) =
       let var_stored = L.build_load var_at_idx "" builder in
       let local = L.build_alloca (ltype_of_typ t) n builder in
       ignore (L.build_store var_stored local builder);
+      local_actors := StringMap.add n (local, StringMap.empty) !local_actors;
       local_vars := StringMap.add n local !local_vars; (idx+1, struct_p) in
+    
     let add_local stmt = match stmt with
       | A.Vdecl (t, n) ->
-         let local_var = L.build_alloca (ltype_of_typ t) n builder
-         in local_vars := StringMap.add n local_var !local_vars
+         let local_var = L.build_alloca (ltype_of_typ t) n builder in
+         local_actors := StringMap.add n (local_var, StringMap.empty) !local_actors;
+         local_vars := StringMap.add n local_var !local_vars
       | A.Vdef v ->
-         let local_var = L.build_alloca (ltype_of_typ v.A.vtyp) v.A.vname builder
-         in local_vars := StringMap.add v.A.vname local_var !local_vars
+         let local_var = L.build_alloca (ltype_of_typ v.A.vtyp) v.A.vname builder in
+         local_actors := StringMap.add v.A.vname (local_var, StringMap.empty) !local_actors;
+         local_vars := StringMap.add v.A.vname local_var !local_vars
       | _ -> ()
     in
     let _ = List.fold_left add_formal (0, local_struct_p) adecl.A.aformals in
@@ -806,7 +846,8 @@ let translate (globals, functions, actors, structs) =
     let add_formal (t, n) p = L.set_value_name n p;
     let local = L.build_alloca (ltype_of_typ t) n builder in
     ignore (L.build_store p local builder);
-    local_vars := StringMap.add n local !local_vars in
+    local_vars := StringMap.add n local !local_vars;
+    local_actors := StringMap.add n (local, StringMap.empty) !local_actors in
     List.iter2 add_formal fdecl.A.formals (Array.to_list (L.params the_function));
     (* make a pass through the function body for variable declarations 
          and add them to local_vars. This assumes that semantic checker 
@@ -815,10 +856,12 @@ let translate (globals, functions, actors, structs) =
     let add_local stmt = match stmt with
 	| A.Vdecl (t, n) ->
 	    let local_var = L.build_alloca (ltype_of_typ t) n builder
-	    in local_vars := StringMap.add n local_var !local_vars
+	    in local_vars := StringMap.add n local_var !local_vars;
+               local_actors := StringMap.add n (local_var, StringMap.empty) !local_actors
         | A.Vdef v ->
 	    let local_var = L.build_alloca (ltype_of_typ v.A.vtyp) v.A.vname builder
-	    in local_vars := StringMap.add v.A.vname local_var !local_vars           
+	    in local_vars := StringMap.add v.A.vname local_var !local_vars;
+               local_actors := StringMap.add v.A.vname (local_var, StringMap.empty) !local_actors
         | _ -> ()
     in
     List.iter add_local fdecl.A.body;
