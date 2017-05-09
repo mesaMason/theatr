@@ -19,6 +19,7 @@ let translate (globals, functions, actors, structs) =
   and i8_t   = L.i8_type   context
   and i1_t   = L.i1_type   context
   and void_t = L.void_type context
+  and ptr_t  = L.pointer_type (L.i8_type context)
   and d_t    = L.double_type context in
 
   (* list of tids of actors that have been instantiated. This is a reference - 
@@ -55,7 +56,8 @@ let translate (globals, functions, actors, structs) =
     | A.Bool -> i1_t
     | A.Void -> void_t
     | A.Actor -> L.pointer_type actor_address_struct_type
-    | A.String -> i32_t
+    | A.String -> ptr_t
+    | A.Char    -> i8_t
   in
 
   let ltype_of_ctyp = function
@@ -306,8 +308,9 @@ let translate (globals, functions, actors, structs) =
       A.IntLit i -> L.const_int i32_t i
     | A.DoubleLit f -> L.const_float d_t f
     | A.StringLit s ->
-       let format_str_str s = L.build_global_stringptr (s^"\n") "fmt" builder in
+       let format_str_str s = L.build_global_stringptr (s^"\n") ".str" builder in
        format_str_str s
+    | A.CharLit c -> L.const_int i8_t (Char.code c)
     | A.BoolLit b -> L.const_int i1_t (if b then 1 else 0)
     | A.Noexpr -> L.const_int i32_t 0
     | A.Id s -> L.build_load (lookup s) s builder
@@ -386,11 +389,14 @@ let translate (globals, functions, actors, structs) =
        let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder
        and format_double_str = L.build_global_stringptr "%f\n" "fmt" builder in
        let format_str_str s = L.build_global_stringptr (s^"\n") "fmt" builder in
+       let format_char_str = L.build_global_stringptr "%c\n" "fmt" builder in
 
        let get_format_typ_str typ =
          match typ with
          | "i32" -> format_int_str
          | "double" -> format_double_str
+         | "i8"   -> format_char_str
+         (* | "char" -> format_char_str *)
          | _    -> raise (Failure("invalid type passed to print, "^typ))
        in
        let e1 = expr builder e in

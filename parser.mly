@@ -8,7 +8,7 @@ open Ast
 %token FUNC_DECL FUNC_ARROW
 %token PLUS MINUS TIMES DIVIDE ASSIGN NOT
 %token EQ NEQ LT LEQ GT GEQ TRUE FALSE AND OR
-%token RETURN IF ELSE FOR WHILE INT DOUBLE BOOL VOID
+%token RETURN IF ELSE FOR WHILE INT DOUBLE BOOL VOID STRING CHAR
 %token RECEIVE DROP AFTER
 %token NEW ACTOR STRUCT DOT
 %token PIPE
@@ -16,6 +16,7 @@ open Ast
 %token <int> INTLIT
 %token <float> DOUBLELIT
 %token <string> STRINGLIT
+%token <char> CHARLIT
 %token <string> ID
 %token EOF
 
@@ -113,7 +114,7 @@ ptyp:
   | VOID { Void }
   | ACTOR { Actor }
   | STRING { String }
-
+  | CHAR { Char }
 ctyp:
     LIST { List }
   | ARRAY { Array }
@@ -155,6 +156,7 @@ expr:
     INTLIT          { IntLit($1) }
   | DOUBLELIT        { DoubleLit($1) }
   | STRINGLIT        { StringLit($1) }  
+  | CHARLIT          { CharLit($1) }
   | TRUE             { BoolLit(true) }
   | FALSE            { BoolLit(false) }
   | ID               { Id($1) }
