@@ -180,7 +180,7 @@ expr:
   | ID LPAREN actuals_opt RPAREN { Call($1, $3) }
   | LPAREN expr RPAREN { $2 }
   | NEW ID LPAREN actuals_opt RPAREN { NewActor($2, $4) }
-  | ID LPAREN actuals_opt RPAREN PIPE ID { Send($1, $3, $6) }
+  | ID DOT ID LPAREN actuals_opt RPAREN PIPE ID { Send($1, $3, $5, $8) }
 
 actuals_opt:
     /* nothing */ { [] }
