@@ -202,9 +202,8 @@ let check (globals, functions, actors, structs) =
                 " in " ^ string_of_expr e))))
               ad.aformals actuals;
             Ptyp(Actor)
-      | Send (actorType, msgFunction, msgArgs, recipientName) ->
+      | Send (_, _, _, _) ->
          (* TODO: check msgFunction and msgArgs correct *)
-         let r = type_of_identifier recipientName in
          Ptyp(Void)
 
     in
