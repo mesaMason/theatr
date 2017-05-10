@@ -1,0 +1,170 @@
+int totalHangups
+
+operator(int capacity):
+    int count = 0
+    receive:
+        tryConnect(actor src, int srcId, actor dest, int destId):
+            print("-----------------")
+            print("OPERATOR")
+            print("trying to make a connection:")
+            print(srcId)
+            print("CALLING")
+            print(destId)
+            print("-----------------")
+            if (count < capacity):
+                print("-----------------")
+                print("OPERATOR")
+                print("Have capacity, checking if")
+                print(destId)
+                print("is busy")
+                print("-----------------")
+                caller.checkIfBusy(dest, src, srcId) | dest
+                count = count + 1
+            else:
+                print("-----------------")
+                print("OPERATOR")
+                print("At capacity, cannot accept more connections, denying:")
+                print(srcId)
+                print("calling")
+                print(destId)
+                print("-----------------")
+                caller.cantConnect(src, dest) | src
+        respondBusy(actor dest, int destId, actor src, int srcId):
+            print("-----------------")
+            print("OPERATOR")
+            print("Callee")
+            print(destId)
+            print("is busy, sending cantConnect to")
+            print(srcId)
+            print("-----------------")
+            caller.cantConnect(src, dest) | src
+            count = count - 1
+        respondOK(actor dest, int destId, actor src, int srcId):
+            print("-----------------")
+            print("OPERATOR")
+            print("Making a connection")
+            print(srcId)
+            print("CONNECTING TO")
+            print(destId)
+            print("-----------------")
+            caller.connect(src, dest, destId) | src
+        endCall(actor src, int srcId, actor dest, int destId):
+            print("-----------------")
+            print("OPERATOR")
+            print("Disconnecting a call")
+            print("-----------------")
+            caller.disconnect() | dest
+            count = count + 1
+    drop:
+        print("invalid function, ignoring")
+        
+caller(actor op, int id):
+    actor partner
+    int partnerId = 9999
+    int busy = 0
+    receive:
+        makeCall(actor me, actor dest, int destId):
+            print("-----------------")
+            print(id)
+            print("trying to make call")
+            print("-----------------")
+            if (busy == 0):
+                print("-----------------")
+                print(id)
+                print("tryConnect to operator")
+                print("-----------------")
+                busy = 1 
+                partnerId = destId
+                partner = dest
+                operator.tryConnect(me, id, dest, partnerId) | op
+        checkIfBusy(actor me, actor caller, int callerId):
+            print("-----------------")
+            print(id)
+            print("checking if busy")
+            print("-----------------")
+            if (busy == 1):
+                print("-----------------")
+                print(id)
+                print("Busy: respondBusy to operator")
+                print("-----------------")
+                operator.respondBusy(me, id, caller, callerId) | op
+            else:
+                print("-----------------")
+                print(id)
+                print("Free: respondOK to operator")
+                print("-----------------")
+                operator.respondOK(me, id, caller, callerId) | op
+                busy = 1
+                partnerId = callerId
+                partner = caller
+        cantConnect(actor me, actor dest):
+            print("-----------------")
+            print(id)
+            print("Not busy anymore")
+            print("-----------------")
+            busy = 0
+            partnerId = 9999
+        connect(actor me, actor dest, int destId):
+            print("-----------------")
+            print(id)
+            print("Connected and talking now")
+            print("-----------------")
+            busy = 1
+            partnerId = destId
+            partner = dest
+        hangUp(actor me):
+            print("-----------------")
+            print(id)
+            print("Got hangup command")
+            print("-----------------")
+            if (busy == 1):
+                print("-----------------")
+                print(id)
+                print("Hanging up on partner")
+                print(partnerId)
+                print("-----------------")
+                busy = 0
+                operator.endCall(me, id, partner, partnerId) | op
+                partnerId = 9999
+        disconnect():
+            print("-----------------")
+            print(id)
+            print("Got disconnected from")
+            print(partnerId)
+            print("-----------------")
+            busy = 0
+            partnerId = 9999
+            totalHangups = totalHangups + 1
+    drop:
+        print("invalid function, ignoring")
+
+func main() -> int:
+    totalHangups = 0
+    print("operator capacity: ")
+    print(3)
+    actor o = new operator(3)
+    actor c1 = new caller(o, 1)
+    actor c2 = new caller(o, 2)
+    actor c3 = new caller(o, 3)
+    actor c4 = new caller(o, 4)
+    actor c5 = new caller(o, 5)
+    caller.makeCall(c1, c2, 2) | c1
+    caller.makeCall(c3, c4, 4) | c3
+    caller.makeCall(c5, c1, 1) | c5
+
+    int i = 0
+    while(i < 4000000):
+        i = i + 1
+    caller.hangUp(c4) | c4
+    caller.hangUp(c2) | c2
+    int j = 0
+    while(totalHangups < 2):
+        j = 0
+    caller.die() | c1
+    caller.die() | c2
+    caller.die() | c3
+    caller.die() | c4
+    caller.die() | c5
+    operator.die() | o
+
+    return 0
