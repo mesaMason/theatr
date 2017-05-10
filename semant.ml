@@ -84,7 +84,11 @@ let check (globals, functions, actors, structs) =
   in
 
   let print_typs = List.map format_print_decls [Ptyp(String); Ptyp(Char); Ptyp(Int); Ptyp(Double); Ptyp(Bool)] in
-  let built_in_decls = add_to_map StringMap.empty print_typs in
+  
+  let geturl = ("geturl", {typ = Ptyp(Int); fname = "geturl"; formals = [(Ptyp(String), "x"); (Ptyp(String), "y")]; body=[]}) in
+  
+  let built_in_print_decls = add_to_map StringMap.empty print_typs in
+  let built_in_decls = add_to_map built_in_print_decls [geturl] in
   
   (* Function declarations for named functions  *)
   let function_decls = List.fold_left (fun m fd -> StringMap.add fd.fname fd m)

@@ -1,0 +1,6 @@
+func main() -> int:
+    string s
+    s = "http://www.cs.columbia.edu/~sedwards/classes/2016/4115-fall/intro.pdf"
+    geturl(s, "intro.pdf");
+    print(s);
+    return 0;

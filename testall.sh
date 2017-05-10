@@ -87,7 +87,7 @@ Check() {
     Run "$PRE" $1 "${basename}.temp" &&
     Run "$THEATR" "<" "${basename}.temp" ">" "${basename}.ll" &&    
     Run "$LLC" "${basename}.ll" ">" "${basename}.s" &&
-    Run "$CC" "-pthread" "-o" "${basename}.exe" "${basename}.s" "queue.o" &&
+    Run "$CC" "-pthread" "-o" "${basename}.exe" "${basename}.s" "queue.o" "filedwld.o" "-lcurl" &&
     Run "./${basename}.exe" > "${basename}.out" &&
     Compare ${basename}.out ${reffile}.out ${basename}.diff
 
@@ -155,6 +155,13 @@ then
     files=$@
 else
     files="tests/test-*.th tests/fail-*.th"
+fi
+
+if [ ! -f filedwld.o ]
+then
+    echo "could not find filedwld.o"
+    echo "try \"make filedwld\""
+    exit 1
 fi
 
 for file in $files

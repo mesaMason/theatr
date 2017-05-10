@@ -213,6 +213,10 @@ let translate (globals, functions, actors, structs) =
   let llvm_memcpy_t = L.function_type (L.void_type context) [| L.pointer_type i8_t ; L.pointer_type i8_t ; i32_t ; i32_t ; i1_t |] in
   let llvm_memcpy = L.declare_function "llvm_memcpy" llvm_memcpy_t the_module in
 
+  (* declare geturl function *)
+  let geturl_func_t = L.function_type (L.i32_type context) [| L.pointer_type i8_t ; L.pointer_type i8_t |] in
+  let geturl_func = L.declare_function "geturl" geturl_func_t the_module in
+
   (********* END of define variable for queu related function **************)
 
   (* Declare each global variable; remember its value in a map *)
@@ -308,7 +312,7 @@ let translate (globals, functions, actors, structs) =
       A.IntLit i -> L.const_int i32_t i
     | A.DoubleLit f -> L.const_float d_t f
     | A.StringLit s ->
-       let format_str_str s = L.build_global_stringptr (s^"\n") ".str" builder in
+       let format_str_str s = L.build_global_stringptr (s) ".str" builder in
        format_str_str s
     | A.CharLit c -> L.const_int i8_t (Char.code c)
     | A.BoolLit b -> L.const_int i1_t (if b then 1 else 0)
@@ -385,10 +389,13 @@ let translate (globals, functions, actors, structs) =
 
        L.build_call pthread_join_func [| pthread_pt_pid ; join_attr|] "pthread_join_result" builder
 
+    | A.Call ("geturl", [e1; e2]) ->
+       L.build_call geturl_func [| (expr builder e1) ; (expr builder e2) |] "geturl" builder 
+
     | A.Call ("print", [e]) | A.Call ("printb", [e]) -> 
        let format_int_str = L.build_global_stringptr "%d\n" "fmt" builder
        and format_double_str = L.build_global_stringptr "%f\n" "fmt" builder in
-       let format_str_str s = L.build_global_stringptr (s^"\n") "fmt" builder in
+       let format_str_str = L.build_global_stringptr ("%s\n") "fmt" builder in
        let format_char_str = L.build_global_stringptr "%c\n" "fmt" builder in
 
        let get_format_typ_str typ =
@@ -402,7 +409,7 @@ let translate (globals, functions, actors, structs) =
        let e1 = expr builder e in
        let typ_e = L.string_of_lltype (L.type_of e1) in
        if typ_e = "i8*" then
-         L.build_call printf_func [| e1 |] "printf" builder
+         L.build_call printf_func [| format_str_str ; e1 |] "printf" builder
        else if typ_e = "i1" then
          L.build_call printf_func [| format_int_str ; (expr builder e) |] "printf" builder
        else
