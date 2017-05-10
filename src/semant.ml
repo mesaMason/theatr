@@ -167,14 +167,6 @@ let check (globals, functions, actors, structs) =
         check_assign (type_of_identifier var) (expr e)
             (Failure ("illegal assignment " ^ string_of_typ lt ^ 
             " = " ^ string_of_typ rt ^ " in " ^ string_of_expr ex))
-      | Call("pthread_create", actuals) ->
-        if List.length actuals > 0 then
-            let fname = List.hd actuals in
-            let new_call = Call(string_of_expr fname, List.tl actuals) in
-            expr new_call
-        else 
-            raise(Failure("expecting at least one argument in pthread_create(): fname, func_arguments"))
-
       | Call("print", actuals) as call ->
         if List.length actuals == 1 then
             let et = expr (List.hd actuals) in

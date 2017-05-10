@@ -111,32 +111,38 @@ let translate (globals, functions, actors, structs) =
   let handle_equal typ =
     match typ with 
     | "double"    -> L.build_fcmp L.Fcmp.Oeq
-    | "i32"       -> L.build_icmp L.Icmp.Eq
+    | "i32"       -> L.build_icmp L.Icmp.Eq 
+    | _  -> raise (Failure("incompatible type passed to equal operation: " ^typ))
   in
   let handle_neq typ =
     match typ with 
     | "double"    -> L.build_fcmp L.Fcmp.One
     | "i32"    -> L.build_icmp L.Icmp.Ne
+    | _  -> raise (Failure("incompatible type passed to neg operation: " ^typ))
   in
   let handle_less typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Olt
     | "i32"    -> L.build_icmp L.Icmp.Slt
+    | _  -> raise (Failure("incompatible type passed to less than operation: " ^typ))
   in
   let handle_leq typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Ole
     | "i32"    -> L.build_icmp L.Icmp.Sle
+    | _  -> raise (Failure("incompatible type passed to less than or equal operation: " ^typ))
   in
   let handle_greater typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Ogt
     | "i32"    -> L.build_icmp L.Icmp.Sgt
+    | _  -> raise (Failure("incompatible type passed to greater than operation: " ^typ))
   in
   let handle_geq typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Oge
     | "i32"    -> L.build_icmp L.Icmp.Sge
+    | _  -> raise (Failure("incompatible type passed to greater than or equal operation: " ^typ))
   in
   let handle_comp_binop op typ1 typ2 =
     match typ1 with
@@ -225,15 +231,6 @@ let translate (globals, functions, actors, structs) =
       let init = L.const_int (ltype_of_typ t) 0
       in StringMap.add n (L.define_global n init the_module) m in
     List.fold_left global_var StringMap.empty globals in
-
-  let global_actor_vars =
-    let global_actor_var m (t, n) = match t with
-      | A.Ptyp(Actor) -> 
-         let llvalue = StringMap.find n global_vars in
-         StringMap.add n (llvalue, StringMap.empty) m
-      | _ -> m
-    in                         
-    List.fold_left global_actor_var StringMap.empty globals in
 
   (* Declare printf(), which the print built-in function will call *)
   let printf_t = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
@@ -325,10 +322,6 @@ let translate (globals, functions, actors, structs) =
                  with Not_found -> try StringMap.find n global_vars
                                    with Not_found -> raise (Failure ("undeclared variable " ^ n))
   in
-  let alookup n = try StringMap.find n !local_actors
-                 with Not_found -> try StringMap.find n global_actor_vars
-                                   with Not_found -> raise (Failure ("undeclared actor " ^ n))
-  in
   
   let rec expr builder = function
       A.IntLit i -> L.const_int i32_t i
@@ -358,59 +351,7 @@ let translate (globals, functions, actors, structs) =
           A.Neg     -> L.build_neg
         | A.Not     -> L.build_not) e' "tmp" builder
     | A.Assign (s, e) -> let e' = expr builder e in
-	                 ignore (L.build_store e' (lookup s) builder);
-                         (match e with
-                         | A.NewActor(a, act) ->
-                            (* update the actor's funcMap now that we know the actual actor type *)
-                            let (_, _, funcMap) = StringMap.find a actor_decls in
-                            let (llvalue, _) = alookup s in
-                            local_actors := StringMap.add s (llvalue, funcMap) !local_actors; ()
-                         | _ -> ()); e'
-    | A.Call("pthread_create", actuals) ->
-       let f = (match (List.hd actuals) with 
-                  A.Id s -> s
-                | _ -> raise(Failure ("expected valid func id for pthread()"))) in 
-
-       let act_func_name = match actuals with hd :: tl -> A.string_of_expr hd in
-       let act_args = match actuals with hd :: tl -> tl in 
-       let act_list_vals = List.map (expr builder) act_args in
-       let act_list_types = List.map (L.type_of) act_list_vals in
-       let act_vals_array = (Array.of_list act_list_vals) in
-       let act_type_array = (Array.of_list act_list_types) in
-
-       (* create struct type 
-           set struct body to fill in the struct type 
-           allocate an instance of the struct on the stack
-           iterate through the args, store them in appropriate index on the stack
-           cast the struct to a pointer type
-        *)
-       let act_struct_type = L.named_struct_type context (act_func_name ^ "_struct") in
-       let _ = L.struct_set_body act_struct_type act_type_array false in 
-       let act_struct = L.build_alloca act_struct_type "" builder in
-       let index_and_store idx _ =
-         let pt = L.build_struct_gep act_struct idx "" builder in
-         let _ = L.build_store act_vals_array.(idx) pt builder in idx+1 in
-       let _ = (match List.length act_list_vals with
-                  0 -> -1
-                | _ -> List.fold_left index_and_store 0 act_list_vals) in 
-       let act_struct_casted = (match List.length act_list_vals with
-                                  0 -> L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t)
-                                | _ -> L.build_bitcast act_struct (L.pointer_type i8_t) "" builder) in
-
-       let (fdef, _) = StringMap.find f function_decls in 
-       let pthread_pt = L.build_alloca i32_t "tid" builder in  
-       let attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
-       let func = L.const_bitcast fdef (L.pointer_type (L.function_type (L.pointer_type i8_t) 
-                                                                        [|L.pointer_type i8_t|])) in
-       
-       let args = [| pthread_pt ; attr ; func ; act_struct_casted |] in 
-       let _ = L.build_call pthread_create_func args "pthread_create_result" builder in
-
-       let join_attr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type (L.pointer_type i8_t)) in
-       let pthread_pt_pid = L.build_load pthread_pt "tid" builder in
-
-       L.build_call pthread_join_func [| pthread_pt_pid ; join_attr|] "pthread_join_result" builder
-
+                ignore (L.build_store e' (lookup s) builder); e'
     | A.Call ("geturl", [e1; e2]) ->
        L.build_call geturl_func [| (expr builder e1) ; (expr builder e2) |] "geturl" builder 
 
@@ -679,6 +620,7 @@ let translate (globals, functions, actors, structs) =
 
       | A.For (e1, e2, e3, body) -> stmt builder
       ( A.Block [A.Expr e1 ; A.While (e2, A.Block [body ; A.Expr e3]) ] )
+      | _ -> raise(Failure("invalid stament in actor"))
     in
 
     (* Execute actor's local statements *)
@@ -976,8 +918,8 @@ let translate (globals, functions, actors, structs) =
            else
              builder
          in
-         ignore (match fdecl.A.typ with
-	    A.Ptyp(Void) -> L.build_ret_void builder
+        ignore (match fdecl.A.typ with
+	        A.Ptyp(Void) -> L.build_ret_void builder
 	  | _ -> L.build_ret (expr builder e) builder); builder
       | A.Sdef s -> ignore (s); builder
       | A.If (predicate, then_stmt, else_stmt) ->

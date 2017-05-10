@@ -10,6 +10,7 @@ __pycache__
 *.o
 *.gch
 a.out
+*.pdf
 \#*\#
 ast-master.ml
 codegen2.ml
