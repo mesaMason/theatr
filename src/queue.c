@@ -1,3 +1,6 @@
+/* Queue functionality for Theatr compiler
+Author: Suraj Keshri
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>

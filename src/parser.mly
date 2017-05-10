@@ -1,4 +1,10 @@
-/* Ocamlyacc parser for Theatr */
+/* Ocamlyacc parser for Theatr
+Authors:
+Betsy Carroll
+Suraj Keshri
+Mike Lin
+Linda Orgeta
+*/
 
 %{
 open Ast

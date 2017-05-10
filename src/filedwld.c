@@ -1,3 +1,7 @@
+/* File downloader library API for Theatr
+Author: Suraj Keshri
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <curl/curl.h>

@@ -1,4 +1,11 @@
-(* Ocamllex scanner for Theatr *)
+(* Ocamllex scanner for Theatr 
+
+Authors:
+Betsy Carroll
+Suraj Keshri
+Mike Lin
+Linda Orgeta
+*)
 
 {
     open Parser

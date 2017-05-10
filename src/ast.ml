@@ -1,5 +1,11 @@
-(* Abstract Syntax Tree and functions for printing it *)
+(* Abstract Syntax Tree and functions for printing it
 
+Authors:
+Betsy Carroll
+Suraj Keshri
+Mike Lin
+Linda Orgeta
+*)
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
           And | Or
 
@@ -84,8 +90,6 @@ type actor_decl = {
     after : drop_after_decl;
   }
 
-  
-(* a struct can only be defined in a global context just like actor or functions*)	
 type program = bind list * func_decl list * actor_decl list
 
 (* Pretty-printing functions *)

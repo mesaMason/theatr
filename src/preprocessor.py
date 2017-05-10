@@ -1,5 +1,7 @@
 #!/usr/bin/python3
-
+""" Preprocessor for Theatr compiler
+Author: Suraj Keshri
+"""
 import sys
 import re
 

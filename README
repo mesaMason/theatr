@@ -1,8 +1,15 @@
 The Theatr compiler
 
-Coded in OCaml, this takes a highly stripped-down subset of C (ints,
-bools, and void types, arithmetic, if-else, for, and while statements,
-and user-defined functions) and compiles it into LLVM IR.
+Authors:
+Betsy Carroll
+Suraj Keshri
+Mike Lin
+Linda Orgeta
+
+Coded in OCaml, this is an actor-based language compiled into LLVM IR.
+
+Based off the MicroC compiler provided by Professor Stephen Edwards for
+COMS 4115 PLT.
 
 It needs the OCaml llvm library, which is most easily installed through opam.
 

@@ -4,6 +4,13 @@
 # Step through a list of files
 #  Compile, run, and check the output of each expected-to-work test
 #  Compile and check the error of each expected-to-fail test
+#
+#
+# Authors:
+# Betsy Carroll
+# Suraj Keshri
+# Mike Lin
+# Linda Orgeta
 
 PRE="./preprocessor.py"
 THEATR="./theatr.native"

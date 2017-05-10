@@ -1,5 +1,12 @@
 (* Top-level of the Theatr compiler: scan & parse the input,
-   check the resulting AST, generate LLVM IR, and dump the module *)
+   check the resulting AST, generate LLVM IR, and dump the module 
+
+Authors:
+Betsy Carroll
+Suraj Keshri
+Mike Lin
+Linda Orgeta
+*)
 
 type action = Ast | LLVM_IR | Compile
 

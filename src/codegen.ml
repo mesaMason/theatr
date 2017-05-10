@@ -1,4 +1,3 @@
-(* codegen in progress *)
 (* Code generation: translate takes a semantically checked AST and
 produces LLVM IR
 LLVM tutorial: Make sure to read the OCaml version of the tutorial
@@ -6,6 +5,12 @@ http://llvm.org/docs/tutorial/index.html
 Detailed documentation on the OCaml LLVM library:
 http://llvm.moe/
 http://llvm.moe/ocaml/
+
+Authors:
+Betsy Carroll
+Suraj Keshri
+Mike Lin
+Linda Orgeta
 *)
 module L = Llvm
 module A = Ast
@@ -215,11 +220,6 @@ let translate (globals, functions, actors) =
   let dequeue_t = L.function_type (L.void_type context) [| L.pointer_type struct_message_t ; L.pointer_type struct_head_t |] in
   let dequeue_func = L.declare_function "dequeue" dequeue_t the_module in
 
-  (* readonly properties not defined for the argument type to the function *)
-(*
-  let llvm_memcpy_t = L.function_type (L.void_type context) [| L.pointer_type i8_t ; L.pointer_type i8_t ; i32_t ; i32_t ; i1_t |] in
-  let llvm_memcpy = L.declare_function "llvm_memcpy" llvm_memcpy_t the_module in
- *)
   (* declare geturl function *)
   let geturl_func_t = L.function_type (L.i32_type context) [| L.pointer_type i8_t ; L.pointer_type i8_t |] in
   let geturl_func = L.declare_function "geturl" geturl_func_t the_module in
@@ -288,14 +288,6 @@ let translate (globals, functions, actors) =
     in
     List.fold_left msg_function (StringMap.empty, 1) actors
   in
-  (*
-   let print_map k v a =
-     let concat = a^" "^k^":"^(string_of_int v) in
-     concat
-   in
-   let mapstring = StringMap.fold print_map msg_functions "" in
-   raise(Failure(mapstring));
-   *)
   let msgLookup n = try StringMap.find n msg_functions
                     with Not_found -> -1
   in
@@ -389,8 +381,6 @@ let translate (globals, functions, actors) =
          and pass a pointer to the struct, along with a pointer to the actor's
          function to pthread *)
     | A.NewActor (a, act) ->
-       (* TODO: generate code to check if max_actors has been reached 
-          and create a codepath to do something if no more actors allowed *)
        let (adef, _, _) = StringMap.find a actor_decls in
        let a_struct_type = StringMap.find a actor_struct_types in
        let actuals = List.rev (List.map (expr builder) (List.rev act)) in
@@ -408,7 +398,6 @@ let translate (globals, functions, actors) =
        let qhead = L.build_call initialize_queue_func [||] "" builder in
        let qhead_casted = L.build_bitcast qhead (L.pointer_type i8_t) "" builder in
        let _ = L.build_store qhead_casted msgQueue builder in
-       (* TODO: do a build_store to put the msg queue pointer into msgQueue *)
        let result = addr_struct in
        
        (* create the actor's function argument struct on the heap 
@@ -449,7 +438,6 @@ let translate (globals, functions, actors) =
        let message = L.build_alloca struct_message_t "" builder in
        let actuals = List.rev (List.map (expr builder) (List.rev msgArgs)) in
        let actuals_array = Array.of_list actuals in
-       (*let type_ptr_list = List.map L.pointer_type (List.map L.type_of actuals) in*)
        let type_ptr_list = List.map L.type_of actuals in
        let type_ptr_array = Array.of_list type_ptr_list in
        let struct_type = L.named_struct_type context "temp" in
@@ -472,36 +460,24 @@ let translate (globals, functions, actors) =
                 | _ -> L.build_bitcast argument_struct (L.pointer_type i8_t) "" builder)
        in
        let sender_ptr = L.const_bitcast (L.const_pointer_null i8_t) (L.pointer_type i8_t) in
-       (* TODO: sender_ptr should be the queue of the current actor *)
-(*       let match_case_ptr = L.build_struct_gep message 0 "" builder in
-       let _ = L.build_store (L.const_int i32_t 1) match_case builder in (*TODO: Change the match case value to a number based on case match in actor body *)
-       let argument_struct_ptr = L.build_struct_gep message 1 "" builder in
-       let _ = L.build_store argument_struct_casted argument_struct_ptr builder in
-       let sender_ptr_ptr = L.build_struct_gep message 2 "" builder in
-       let _ = L.build_store sender_ptr sender_ptr_ptr builder in *)
        
        (* fill out the msgqueue struct with the case and the pointers to funcArgsStruct and sender ptrs *)
-
        let namespaced_msgFunc = actorType ^ "." ^ msgFunction in
        let case_num = msgLookup namespaced_msgFunc in
        let case_num = match msgFunction with
          | "die" -> 0
          | _ -> case_num
        in
-       let case_val = (L.const_int i32_t case_num) in (* TODO: change this to match case number *)
+       let case_val = (L.const_int i32_t case_num) in 
        let case_ptr = L.build_alloca i32_t "case" builder in
        let _ = L.build_store case_val case_ptr builder in
        let msg_case_ptr = L.build_struct_gep message 0 "" builder in
        let msg_arg_struct_ptr = L.build_struct_gep message 1 "" builder in
        let msg_sender_ptr = L.build_struct_gep message 2 "" builder in
-       (*let msg_case = L.build_load msg_case_ptr "" builder in
-       let msg_arg_struct = L.build_load msg_arg_struct_ptr "" builder in*)
        let _ = L.build_store case_val msg_case_ptr builder in
        let _ = L.build_store argument_struct_casted msg_arg_struct_ptr builder in
        let _ = L.build_store sender_ptr msg_sender_ptr builder in
        let message_val = L.build_load message "message_val" builder in
-
-       (*raise(Failure("msgQueue = "^L.string_of_llvalue(msgQueue)));*)
        let _ = L.build_call enqueue_func [| msgQueue ; message_val |] "" builder in
        L.const_int i32_t 1
     | _ -> raise(Failure("unrecognized expression"))
@@ -523,7 +499,7 @@ let translate (globals, functions, actors) =
            int weight = s->weight;
        }
     *)
-      (* create the struct pointer - steps copied from LLVM emitted by C code *)
+    (* create the struct pointer - steps copied from LLVM emitted by C code *)
     let voidp = Array.get (L.params the_function) 0 in
     let _ = L.set_value_name "ptr" voidp in
     let local_voidp = L.build_alloca (L.pointer_type i8_t) "" builder in
@@ -550,7 +526,6 @@ let translate (globals, functions, actors) =
       (* need to cast 0 and idx to be i32_t before passing to index array in LLVM *)
       let zero = L.const_int i32_t 0 in 
       let idxVal = L.const_int i32_t idx in
-      (* TODO: change build_in_bounds_gep to build_struct_gep? *)
       let var_at_idx = L.build_in_bounds_gep load_struct [|zero; idxVal|] "" builder in
       let var_stored = L.build_load var_at_idx "" builder in
       let local = L.build_alloca (ltype_of_typ t) n builder in
@@ -638,7 +613,6 @@ let translate (globals, functions, actors) =
     in
 
     let build_pred_block pred bb builder body_bb merge_bb = 
-        (*let bool_val = expr builder predicate in*)
         let bool_val = pred in
 
         (* Terminator for pred block *)
@@ -655,7 +629,6 @@ let translate (globals, functions, actors) =
           L.position_at_end msg_bb msg_builder;
           StringMap.add namespace_id msg_bb m in
 
-
         let create_default_msg_block decl = 
             let actor_local_vars_copy = ! local_vars in
             let (msg_bb, msg_builder) = make_block "msg_default_case" in
@@ -667,7 +640,6 @@ let translate (globals, functions, actors) =
         
         let create_die_msg_block = 
             let (die_bb, die_builder) = make_block "msg_die_case" in
-            (* TODO body of die msg *)
             ignore(L.build_br merge_bb die_builder);
             die_bb in
         
@@ -699,12 +671,11 @@ let translate (globals, functions, actors) =
             (idx+1) in
         let _ = List.fold_left add_msg_formal 0 decl.A.mformals in
         
-        List.iter add_local decl.A.mbody; (* TODO move local var to msg_builder *)
+        List.iter add_local decl.A.mbody;
         let msg_builder = stmt msg_builder (A.Block decl.A.mbody) in
         local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
         local_actors := actor_local_actors_copy; (* Resets actor local actors *)
         ignore(L.build_br finish_bb msg_builder);
-        (*L.position_at_end bb msg_builder;*)
     in
 
     let build_body_block bb builder finish_bb merge_bb = 
@@ -721,7 +692,6 @@ let translate (globals, functions, actors) =
         (* pull message off queue and store the args struct pointer on the stack, 
            along with the message number*)
         
-        (* TODO: here we add calls to dequeue the next msg from msgqueue *)
         let self_index = lookup "self:index" in
         let self_index_val = L.build_load self_index "self:index_val" builder in
         let zero = L.const_int i32_t 0 in
@@ -733,38 +703,19 @@ let translate (globals, functions, actors) =
         let msgQueue = L.build_bitcast msgQueue_raw (L.pointer_type struct_head_t) "" builder in
         let ret_message_struct = L.build_alloca struct_message_t "message_struct" builder in        
         let _ = L.build_call dequeue_func [| ret_message_struct ; msgQueue |] "" builder in
-(*        
-        (* TODO: get the actual msg pointer *)
-        let local_msgp = L.build_alloca (L.pointer_type i8_t) "local_msg_p" builder in
-        (* let _ = L.build_store msgp local_msgp builder in*) (* store the msgptr to local *)
-        let local_msg_struct_p = L.build_alloca (L.pointer_type msg_struct_type) "msg_struct_p" builder in (* msg_struct_type** *)
-        let loaded_msgp = L.build_load local_msgp "" builder in
-        let casted_msgp = L.build_bitcast loaded_msgp (L.pointer_type msg_struct_type) "" builder in
-
-        (* FOR SWITCH STATEMENTS: local_msg_struct_p is a pointer to the message struct *)
-
-        (* Get contents of msg struct (num, ptr to struct, and sender)*) 
-        let _ = L.build_store casted_msgp local_msg_struct_p builder in
- *)
         let loaded_local_msg_struct = ret_message_struct in
-        (*let local_msg_struct_p = L.build_alloca msg_struct_type "" builder in*)
-
         let idx_case = L.build_struct_gep loaded_local_msg_struct 0 "" builder in 
-
         let case = L.build_load idx_case "case_num" builder in (* i32 *)
         let idx_actuals_ptr = L.build_struct_gep loaded_local_msg_struct 1 "" builder in (* *)
         let actuals_ptr = L.build_load idx_actuals_ptr "actuals_ptr" builder in 
         let idx_sender_ptr = L.build_struct_gep loaded_local_msg_struct 2 "" builder in
         let sender_ptr = L.build_load idx_sender_ptr "sender_ptr" builder in
-        (*raise(Failure("llvalue = "^(L.string_of_llvalue sender_ptr)));*)
-
         let cases = build_msg_blocks finish_bb merge_bb in
 
         (* Terminator for body block *)
         L.position_at_end bb builder;   
         let sw = L.build_switch case (StringMap.find "drop" cases)
                                  ((List.length adecl.A.receives)+1) builder in
-
 
         (*Adds cases to switch and creates block and decl maps*)
         let add_msg_to_switch name bb = 
@@ -778,13 +729,7 @@ let translate (globals, functions, actors) =
             ()
         in
         let _ = StringMap.iter add_msg_to_switch cases in
-(*
-        let count_mdecl (count, m) decl = 
-            let count_int = int_of_string count in
-            let m = StringMap.add count decl m in
-            (string_of_int (count_int+1), m)
-        in
- *)      
+
         (* Adds msg body instructions msg body *)
         let add_msg_vars_body decl = 
           let namespace_id = adecl.A.aname ^ "." ^ decl.A.mname in
@@ -819,7 +764,6 @@ let translate (globals, functions, actors) =
         let _ = build_body_block body_bb body_builder finish_bb merge_bb in
         let _ = build_merge_block merge_bb merge_builder in
         
-        (*L.position_at_end (L.entry_block the_function) builder; *)
         ignore (L.build_br pred_bb builder); (* Terminator for block calling while *)
         ()
     in

@@ -1,4 +1,11 @@
-(* Semantic checking for the Theatr compiler *)
+(* Semantic checking for the Theatr compiler 
+
+Authors:
+Betsy Carroll
+Suraj Keshri
+Mike Lin
+Linda Orgeta
+*)
 
 open Ast
 
@@ -50,19 +57,7 @@ let check (globals, functions, actors) =
   let actor_decl s = try StringMap.find s actor_decls
         with Not_found -> raise (Failure ("unrecognized actor " ^ s))
   in
-(*
-  (**** Checking Structs ****)
-  report_duplicate (fun n -> "duplicate struct " ^ n)
-                   (List.map (fun sn -> sn.name) structs);
 
-  let struct_decls = List.fold_left (fun m sd -> StringMap.add sd.name sd m)
-                                    StringMap.empty structs
-  in
-  
-  let find_struct_decl s = try StringMap.find s struct_decls with
-                        Not_found -> raise (Failure ("unrecognized struct " ^ s))
-  in
- *)
   (**** Checking Global Variables ****)
 
   List.iter (check_not_void (fun n -> "illegal void global " ^ n)) globals;
@@ -203,7 +198,6 @@ let check (globals, functions, actors) =
               ad.aformals actuals;
             Ptyp(Actor)
       | Send (_, _, _, _) ->
-         (* TODO: check msgFunction and msgArgs correct *)
          Ptyp(Void)
 
     in
