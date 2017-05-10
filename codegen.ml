@@ -682,6 +682,7 @@ let translate (globals, functions, actors, structs) =
     in
 
     (* Execute actor's local statements *)
+    let builder = L.builder_at_end context (L.entry_block the_function) in
     let builder = stmt builder (A.Block adecl.A.alocals) in
 
     (***** Actor implementation 
@@ -762,7 +763,7 @@ let translate (globals, functions, actors, structs) =
         let msg_builder = stmt msg_builder (A.Block decl.A.mbody) in
         local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
         local_actors := actor_local_actors_copy; (* Resets actor local actors *)
-        L.position_at_end bb msg_builder;
+        (*L.position_at_end bb msg_builder;*)
     in
 
     let build_body_block bb builder finish_bb merge_bb = 
@@ -913,7 +914,7 @@ let translate (globals, functions, actors, structs) =
         let _ = build_body_block body_bb body_builder finish_bb merge_bb in
         let _ = build_merge_block merge_bb merge_builder in
         
-        L.position_at_end (L.entry_block the_function) builder; 
+        (*L.position_at_end (L.entry_block the_function) builder; *)
         ignore (L.build_br pred_bb builder); (* Terminator for block calling while *)
         ()
     in

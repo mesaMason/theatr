@@ -1,0 +1,61 @@
+operator(actor me, int capacity):
+    int count = 0
+    receive:
+        tryConnect(actor src, actor dest):
+            if (count < capacity):
+                caller.checkIfBusy(src) | dest
+                count = count + 1;
+            else:
+                caller.cantConnect(dest) | src
+        respondBusy(actor dest, actor src):
+            caller.cantConnect(dest) | src
+            count = count - 1
+        respondOK(actor dest, actor src):
+            caller.connect(dest) | src
+        endCall(actor src, actor dest):
+            caller.disconnect() | dest
+            count = count + 1
+    drop:
+        print("invalid function, ignoring")
+        
+caller(actor me, actor op, int id):
+    actor partner
+    int busy = 0
+    receive:
+        makeCall(actor dest):
+            if (busy == 0):
+                busy = 1 
+                partner = dest
+                operator.tryConnect(me, dest) | op
+        checkIfBusy(actor caller):
+            if (busy == 1):
+                operator.respondBusy(me, caller) | op
+            else:
+                operator.respondOK(me, caller) | op
+                busy = 1
+                partner = caller
+        cantConnect(actor dest):
+            busy = 0
+        connect(actor dest):
+            busy = 1
+            partner = dest
+        hangUp():
+            if (busy == 1):
+                busy = 0
+                operator.endCall(me, partner) | op
+        disconnect():
+            busy = 0
+    drop:
+        print("invalid function, ignoring")
+
+func main() -> int:
+    actor o = new operator(o, 3)
+    actor c1 = new caller(c1, o, 1)
+    actor c2 = new caller(c2, o, 2)
+    actor c3 = new caller(c3, o, 3)
+    actor c4 = new caller(c4, o, 4)
+    actor c5 = new caller(c5, o, 5)
+    caller.makeCall(c2) | c1
+    caller.makeCall(c3) | c4
+    caller.makeCall(c1) | c5
+    return 0
