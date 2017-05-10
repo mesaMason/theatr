@@ -17,7 +17,7 @@ clean :
 	rm -rf testall.log *.diff theatr scanner.ml parser.ml parser.mli
 	rm -rf *.cmx *.cmi *.cmo *.cmx *.o
 	rm -rf *.ll *.ll	
-	rm -rf *.ll *.temp *.out *.err *.s *.exe	
+	rm -rf *.ll *.temp *.out *.err *.s *.exe *.pdf	
 
 
 # More detailed: build using ocamlc/ocamlopt + ocamlfind to locate LLVM

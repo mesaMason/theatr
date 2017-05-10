@@ -1,0 +1,41 @@
+crawler():
+    receive:
+        dwld(string url, string filename):
+            geturl(url, filename);
+            print("File downloaded!!");
+        myprint(string name):
+            print(name);
+    drop:
+        print("not getting paid well enough to do that job")
+    after:
+        return
+
+
+
+func main() -> int:
+    actor c1 = new crawler()
+    actor c2 = new crawler()
+    actor c3 = new crawler()
+    string url1 = "http://www.cs.columbia.edu/~sedwards/classes/2017/4115-spring/intro.pdf"
+    string url2 = "http://www.cs.columbia.edu/~sedwards/classes/2017/4115-spring/processors.pdf"
+    string url3 = "http://www.cs.columbia.edu/~sedwards/classes/2017/4115-spring/projects.pdf"
+    string url4 = "http://www.cs.columbia.edu/~sedwards/classes/2017/4115-spring/syntax.pdf"
+    string url5 = "http://www.cs.columbia.edu/~sedwards/classes/2017/4115-spring/hw1.pdf"
+    string url6 = "http://www.cs.columbia.edu/~sedwards/classes/2017/4115-spring/microc.pdf"
+    crawler.dwld(url1, "intro.pdf") | c1
+    crawler.dwld(url2, "processor.pdf") | c2
+    crawler.dwld(url3, "projects.pdf") | c3
+    crawler.myprint("crawler 1 downloaded intro.pdf") | c1
+    crawler.myprint("crawler 2 downloaded processor.pdf") | c2
+    crawler.myprint("crawler 3 downloaded projects.pdf") | c3
+    crawler.gfy() | c1
+    crawler.dwld(url1, "syntax.pdf") | c1
+    crawler.dwld(url1, "hw1.pdf") | c2
+    crawler.dwld(url1, "microc.pdf") | c3
+    crawler.myprint("crawler 1 downloaded syntax.pdf") | c1
+    crawler.myprint("crawler 2 downloaded hw1.pdf") | c2
+    crawler.myprint("crawler 3 downloaded microc.pdf") | c3
+    crawler.die() | c1
+    crawler.die() | c2
+    crawler.die() | c3
+    return 0;
