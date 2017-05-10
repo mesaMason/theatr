@@ -708,7 +708,7 @@ let translate (globals, functions, actors, structs) =
     in
 
     (* Returns list of msg blocks *)
-    let build_msg_blocks = 
+    let build_msg_blocks finish_bb merge_bb = 
         let create_msg_block m decl = 
           let namespace_id = adecl.A.aname ^ "." ^ decl.A.mname in
           let (msg_bb, msg_builder) = make_block ("msg_"^decl.A.mname^"_case") in
@@ -722,13 +722,13 @@ let translate (globals, functions, actors, structs) =
             List.iter add_local decl.A.dabody;
             let msg_builder = stmt msg_builder (A.Block decl.A.dabody) in
             local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
-            L.position_at_end msg_bb msg_builder;
+            ignore(L.build_br finish_bb msg_builder);
             msg_bb in
         
         let create_die_msg_block = 
             let (die_bb, die_builder) = make_block "msg_die_case" in
             (* TODO body of die msg *)
-            L.position_at_end die_bb die_builder;  
+            ignore(L.build_br merge_bb die_builder);
             die_bb in
         
         let cases = List.fold_left create_msg_block StringMap.empty adecl.A.receives in
@@ -741,7 +741,7 @@ let translate (globals, functions, actors, structs) =
     in
 
     (* Adds msg instructions - local vars and stmts *)
-    let add_msg_instructions decl bb struct_typ actuals_ptr sender_ptr = 
+    let add_msg_instructions decl bb struct_typ actuals_ptr sender_ptr finish_bb = 
         let actor_local_vars_copy = !local_vars in
         let actor_local_actors_copy = !local_actors in
         let msg_builder = L.builder_at_end context bb in
@@ -763,6 +763,7 @@ let translate (globals, functions, actors, structs) =
         let msg_builder = stmt msg_builder (A.Block decl.A.mbody) in
         local_vars := actor_local_vars_copy;  (* Resets actor local vars *)
         local_actors := actor_local_actors_copy; (* Resets actor local actors *)
+        ignore(L.build_br finish_bb msg_builder);
         (*L.position_at_end bb msg_builder;*)
     in
 
@@ -821,7 +822,7 @@ let translate (globals, functions, actors, structs) =
         let sender_ptr = L.build_load idx_sender_ptr "sender_ptr" builder in
         (*raise(Failure("llvalue = "^(L.string_of_llvalue sender_ptr)));*)
 
-        let cases = build_msg_blocks in
+        let cases = build_msg_blocks finish_bb merge_bb in
 
         (* Terminator for body block *)
         L.position_at_end bb builder;   
@@ -853,41 +854,9 @@ let translate (globals, functions, actors, structs) =
           let namespace_id = adecl.A.aname ^ "." ^ decl.A.mname in
           let msg_bb = StringMap.find namespace_id cases in
           let mstruct_t = StringMap.find decl.A.mname msg_struct_types in
-          add_msg_instructions decl msg_bb mstruct_t actuals_ptr sender_ptr
+          add_msg_instructions decl msg_bb mstruct_t actuals_ptr sender_ptr finish_bb
         in
         List.iter add_msg_vars_body adecl.A.receives;
-
-        (* Add terminator to each msg case block 
-         * 
-         * COMMENT when testing msg body sequentially.
-         * To test the body of just one msg, UNCOMMENT commedted line below.
-         * It cases the specified case to branch to merge_bb instead of finish_bb *)
-         let add_case_terminals name bb = match name with 
-           | "die" -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
-          (*| "#" -> ignore(L.build_br merge_bb (L.builder_at_end context bb)*)
-            | _ -> ignore(L.build_br finish_bb (L.builder_at_end context bb))
-        in
-        let _ = StringMap.iter add_case_terminals cases in
-       
-        (* To test all msg bodies starting with default and moving to other cases in 
-         * in rev sequential order, do following:
-         * 1. UNCOMMENT to test all msg bodies sequentially 
-         * 3. COMMENT prev section - Add terminator to cases 
-         * 4. SET num to a high number than the  number of msg + 1 
-         *    to ensure first case called is default case. 
-         * 5. SET `pred` in build_actor_while to true, if not already 
-         *    to ensure while loop running. 
-         * *)
-        (*let connect_blocks count bb = match count with 
-          | "-1" -> let last_num = string_of_int (List.length adecl.A.receives) in
-                    let branch_bb = StringMap.find last_num bb_map in 
-                    ignore(L.build_br branch_bb (L.builder_at_end context bb))
-          | "0" -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
-          | _ -> let prev_num = string_of_int ((int_of_string count) - 1) in
-                 let branch_bb = StringMap.find prev_num bb_map in 
-                 ignore(L.build_br branch_bb (L.builder_at_end context bb)) in
-        let _ = StringMap.iter connect_blocks bb_map in
-        *)
         builder
     in
     
