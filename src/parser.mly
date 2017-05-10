@@ -118,10 +118,6 @@ typ:
     ptyp { Ptyp($1) }
   | ctyp LT ptyp GT { Ctyp($1, $3) }
 
-vdecl_list:
-    /* nothing */    { [] }
-  | vdecl_list vdecl { $2 :: $1 }
-
 vdecl:
    typ ID SEMI { ($1, $2) }
 
