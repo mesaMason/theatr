@@ -31,7 +31,7 @@ func main() -> int:
     crawler.dwld(url1, "hw1.pdf") | c1
     crawler.dwld(url1, "microc.pdf") | c1
     crawler.myprint("crawler 1 downloaded syntax.pdf") | c1
-    crawler.myprint("crawler 2 downloaded hw1.pdf") | c1
-    crawler.myprint("crawler 3 downloaded microc.pdf") | c1
+    crawler.myprint("crawler 1 downloaded hw1.pdf") | c1
+    crawler.myprint("crawler 1 downloaded microc.pdf") | c1
     crawler.die() | c1
     return 0;
