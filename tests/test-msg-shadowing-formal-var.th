@@ -38,11 +38,11 @@ func main() -> int:
     actor d = new dolphin(weight, age)
     
     // Testing formal args shadowing
-    swim(13) | d
-    eat(30) | d
-    sleep(0) | d
-    hello() | d
-    die() | d
+    dolphin.swim(13) | d
+    dolphin.eat(30) | d
+    dolphin.sleep(0) | d
+    dolphin.hello() | d
+    dolphin.die() | d
 
     return 0
 

@@ -19,6 +19,6 @@ func main() -> int:
     age = 3;
     actor d
     d = new dolphin(weight, age)    
-    die() | d
+    dolphin.die() | d
     return 0
 

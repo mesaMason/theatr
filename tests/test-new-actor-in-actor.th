@@ -3,7 +3,7 @@ dolphin(int weight, int age):
     print(weight)
     print(age)
     actor baby = new babyDolphin(weight*2, age*2)
-    die() | baby
+    babyDolphin.die() | baby
     receive:
         eat(int food):
             weight = weight + food
@@ -33,5 +33,5 @@ func main() -> int:
     int weight = 100
     int age = 3
     actor d = new dolphin(weight, age)
-    die() | d
+    dolphin.die() | d
     return 0
