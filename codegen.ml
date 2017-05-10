@@ -280,6 +280,28 @@ let translate (globals, functions, actors, structs) =
       StringMap.add name struct_type m in
     List.fold_left actor_struct StringMap.empty actors in
 
+  let (msg_functions, _) =
+    let msg_function (m, count) adecl =
+      let msg_function_recv (m, count) mdecl =
+        let namespaced_id = adecl.A.aname ^ "." ^ mdecl.A.mname in
+        StringMap.add namespaced_id count m, count+1
+      in
+      List.fold_left msg_function_recv (m, count) adecl.A.receives
+    in
+    List.fold_left msg_function (StringMap.empty, 1) actors
+  in
+  (*
+   let print_map k v a =
+     let concat = a^" "^k^":"^(string_of_int v) in
+     concat
+   in
+   let mapstring = StringMap.fold print_map msg_functions "" in
+   raise(Failure(mapstring));
+   *)
+  let msgLookup n = try StringMap.find n msg_functions
+                    with Not_found -> -1
+  in
+  
   (* construct the actor's main looping function to pass to pthread_create 
      This will be almost the same for each actor, the difference being the 
      specific local variables that each actor needs to maintain its state
@@ -475,7 +497,7 @@ let translate (globals, functions, actors, structs) =
        let new_actor_count = L.build_add curr_actor_count (L.const_int i32_t 1) "" builder in
        let _ = L.build_store new_actor_count actor_count builder in
        result
-    | A.Send (msgFunction, msgArgs, recipientName) ->
+    | A.Send (actorType, msgFunction, msgArgs, recipientName) ->
        let llvalue = lookup recipientName in
        let addr_struct = L.build_load llvalue "addr_struct" builder in
 
@@ -520,14 +542,14 @@ let translate (globals, functions, actors, structs) =
        let sender_ptr_ptr = L.build_struct_gep message 2 "" builder in
        let _ = L.build_store sender_ptr sender_ptr_ptr builder in *)
        
+       (* fill out the msgqueue struct with the case and the pointers to funcArgsStruct and sender ptrs *)
+
+       let namespaced_msgFunc = actorType ^ "." ^ msgFunction in
+       let case_num = msgLookup namespaced_msgFunc in
        let case_num = match msgFunction with
          | "die" -> 0
-         | _ -> let (_, funcMap) = try alookup recipientName
-                                   with Not_found -> raise (Failure ("undeclared actor " ^ recipientName)) in
-                try StringMap.find msgFunction funcMap
-                with Not_found -> -1
+         | _ -> case_num
        in
-       (* fill out the msgqueue struct with the case and the pointers to funcArgsStruct and sender ptrs *)
        let case_val = (L.const_int i32_t case_num) in (* TODO: change this to match case number *)
        let case_ptr = L.build_alloca i32_t "case" builder in
        let _ = L.build_store case_val case_ptr builder in
@@ -686,10 +708,12 @@ let translate (globals, functions, actors, structs) =
 
     (* Returns list of msg blocks *)
     let build_msg_blocks = 
-        let create_msg_block decl = 
-            let (msg_bb, msg_builder) = make_block ("msg_"^decl.A.mname^"_case") in
-            L.position_at_end msg_bb msg_builder;
-            msg_bb in
+        let create_msg_block m decl = 
+          let namespace_id = adecl.A.aname ^ "." ^ decl.A.mname in
+          let (msg_bb, msg_builder) = make_block ("msg_"^decl.A.mname^"_case") in
+          L.position_at_end msg_bb msg_builder;
+          StringMap.add namespace_id msg_bb m in
+
 
         let create_default_msg_block decl = 
             let actor_local_vars_copy = ! local_vars in
@@ -706,13 +730,13 @@ let translate (globals, functions, actors, structs) =
             L.position_at_end die_bb die_builder;  
             die_bb in
         
-        let cases = List.map create_msg_block adecl.A.receives in
+        let cases = List.fold_left create_msg_block StringMap.empty adecl.A.receives in
         let def_bb = create_default_msg_block adecl.A.drop in
         let die_bb = create_die_msg_block in
-
-        let cases = def_bb :: die_bb :: cases in
-
+        let cases = StringMap.add "drop" def_bb cases in
+        let cases = StringMap.add "die" die_bb cases in
         cases
+
     in
 
     (* Adds msg instructions - local vars and stmts *)
@@ -722,8 +746,6 @@ let translate (globals, functions, actors, structs) =
         let msg_builder = L.builder_at_end context bb in
 
         let msg_struct_ptr_casted = L.build_bitcast actuals_ptr (L.pointer_type struct_typ) "actual_ptr" msg_builder in
-        (*let msg_struct = L.build_load msg_struct_ptr "" msg_builder in            
-         *)
         let msg_struct_ptr_p = L.build_alloca (L.pointer_type struct_typ) "" msg_builder in
         let _ = L.build_store msg_struct_ptr_casted msg_struct_ptr_p msg_builder in
         let msg_struct_ptr = L.build_load msg_struct_ptr_p "" msg_builder in
@@ -802,46 +824,49 @@ let translate (globals, functions, actors, structs) =
 
         (* Terminator for body block *)
         L.position_at_end bb builder;   
-        let sw = L.build_switch case (List.hd cases) (List.length (List.tl cases)) builder in
+        let sw = L.build_switch case (StringMap.find "drop" cases)
+                                 ((List.length adecl.A.receives)+1) builder in
+
 
         (*Adds cases to switch and creates block and decl maps*)
-        let add_msg_to_switch (count, m) bb = 
-            let m = StringMap.add count bb m in
-            let count_int = int_of_string count in
-            let case_num = L.const_int i32_t count_int in
-            L.add_case sw case_num bb;
-            (string_of_int (count_int+1), m)
+        let add_msg_to_switch name bb = 
+          if name = "drop" then () else
+            let num = match name with
+              | "die" -> 0
+              | _ -> msgLookup name
+            in
+            let case_num = L.const_int i32_t num in
+            let _ = L.add_case sw case_num bb in
+            ()
         in
-        let (_, bb_map) = List.fold_left add_msg_to_switch ("0", StringMap.empty) (List.tl cases) in
-        let bb_map = StringMap.add "-1" (List.hd cases) bb_map in
+        let _ = StringMap.iter add_msg_to_switch cases in
 
         let count_mdecl (count, m) decl = 
             let count_int = int_of_string count in
             let m = StringMap.add count decl m in
             (string_of_int (count_int+1), m)
         in
-        let (_, decl_map) = List.fold_left count_mdecl ("1", StringMap.empty) adecl.A.receives in   
         
         (* Adds msg body instructions msg body *)
-        let add_msg_vars_body c decl = 
-            let msg_bb = StringMap.find c bb_map in
-            let mstruct_t = StringMap.find decl.A.mname msg_struct_types in
-            add_msg_instructions decl msg_bb mstruct_t actuals_ptr sender_ptr
+        let add_msg_vars_body decl = 
+          let namespace_id = adecl.A.aname ^ "." ^ decl.A.mname in
+          let msg_bb = StringMap.find namespace_id cases in
+          let mstruct_t = StringMap.find decl.A.mname msg_struct_types in
+          add_msg_instructions decl msg_bb mstruct_t actuals_ptr sender_ptr
         in
-        StringMap.iter add_msg_vars_body decl_map;
-
+        List.iter add_msg_vars_body adecl.A.receives;
 
         (* Add terminator to each msg case block 
          * 
          * COMMENT when testing msg body sequentially.
          * To test the body of just one msg, UNCOMMENT commedted line below.
          * It cases the specified case to branch to merge_bb instead of finish_bb *)
-        let add_case_terminals count bb = match count with 
-            | "0" -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
+         let add_case_terminals name bb = match name with 
+           | "die" -> ignore(L.build_br merge_bb (L.builder_at_end context bb))
           (*| "#" -> ignore(L.build_br merge_bb (L.builder_at_end context bb)*)
             | _ -> ignore(L.build_br finish_bb (L.builder_at_end context bb))
         in
-        let _ = StringMap.iter add_case_terminals bb_map in
+        let _ = StringMap.iter add_case_terminals cases in
        
         (* To test all msg bodies starting with default and moving to other cases in 
          * in rev sequential order, do following:

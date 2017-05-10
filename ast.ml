@@ -32,7 +32,7 @@ type expr =
   | Assign of string * expr
   | Call of string * expr list
   | NewActor of string * expr list
-  | Send of string * expr list * string
+  | Send of string * string * expr list * string
   | Noexpr
 
 type vdef = {
