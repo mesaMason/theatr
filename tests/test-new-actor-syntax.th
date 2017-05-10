@@ -23,5 +23,5 @@ func main() -> int:
     actor d
     d = new dolphin(weight, age)    
     print("new dolphin created")
-    die() | d
+    dolphin.die() | d
     return 0

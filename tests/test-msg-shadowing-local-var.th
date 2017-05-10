@@ -24,9 +24,9 @@ func main() -> int:
     int weight = 10
     int age = 3
     actor d = new dolphin(weight, age)
-    arwgadg() | d
-    eat() | d
-    swim() | d
-    die() | d
+    dolphin.arwgadg() | d
+    dolphin.eat() | d
+    dolphin.swim() | d
+    dolphin.die() | d
     return 0
 
