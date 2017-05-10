@@ -86,7 +86,7 @@ type actor_decl = {
 
   
 (* a struct can only be defined in a global context just like actor or functions*)	
-type program = bind list * func_decl list * actor_decl list * sdecl list
+type program = bind list * func_decl list * actor_decl list
 
 (* Pretty-printing functions *)
 
@@ -195,8 +195,8 @@ let string_of_adecl adecl =
 let string_of_sdecl sdecl =
   "struct " ^ sdecl.name ^ " {\n" ^  String.concat "\n" (List.map string_of_vdecl sdecl.elements) ^ "\n}" 
 
-let string_of_program (vars, funcs, actors, structs) =
+let string_of_program (vars, funcs, actors) =
   String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
   String.concat "\n" (List.map string_of_fdecl funcs) ^ "\n" ^
-  String.concat "\n" (List.map string_of_adecl actors) ^ "\n" ^
-  String.concat "\n" (List.map string_of_sdecl structs) ^ "\n"
+  String.concat "\n" (List.map string_of_adecl actors) ^ "\n"
+

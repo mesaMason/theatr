@@ -12,7 +12,7 @@ module A = Ast
 
 module StringMap = Map.Make(String)
 
-let translate (globals, functions, actors, structs) =
+let translate (globals, functions, actors) =
   let context = L.global_context () in
   let the_module = L.create_module context "Theatr"
   and i32_t  = L.i32_type  context
@@ -155,7 +155,7 @@ let translate (globals, functions, actors, structs) =
       | A.Geq       -> handle_geq typ1
       | _           -> raise(Failure("invalid op"))
     )
-    | _             -> raise (Failure("incompatible types passed to comparison operation: " ^typ1 ^typ2))
+                (*    | _             -> raise (Failure("incompatible types passed to comparison operation: " ^typ1 ^typ2))*)
   in
 
       (* let list_arg_types = List.map (fun (t,_) -> ltype_of_typ t) adecl.A.aformals in *)
@@ -216,9 +216,10 @@ let translate (globals, functions, actors, structs) =
   let dequeue_func = L.declare_function "dequeue" dequeue_t the_module in
 
   (* readonly properties not defined for the argument type to the function *)
+(*
   let llvm_memcpy_t = L.function_type (L.void_type context) [| L.pointer_type i8_t ; L.pointer_type i8_t ; i32_t ; i32_t ; i1_t |] in
   let llvm_memcpy = L.declare_function "llvm_memcpy" llvm_memcpy_t the_module in
-
+ *)
   (* declare geturl function *)
   let geturl_func_t = L.function_type (L.i32_type context) [| L.pointer_type i8_t ; L.pointer_type i8_t |] in
   let geturl_func = L.declare_function "geturl" geturl_func_t the_module in
@@ -680,7 +681,7 @@ let translate (globals, functions, actors, structs) =
     in
 
     (* Adds msg instructions - local vars and stmts *)
-    let add_msg_instructions decl bb struct_typ actuals_ptr sender_ptr finish_bb = 
+    let add_msg_instructions decl bb struct_typ actuals_ptr _ finish_bb = 
         let actor_local_vars_copy = !local_vars in
         let actor_local_actors_copy = !local_actors in
         let msg_builder = L.builder_at_end context bb in
