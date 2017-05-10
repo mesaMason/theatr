@@ -127,6 +127,8 @@ let rec string_of_expr = function
   | NewActor(a, el) ->
      "new" ^ a ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
+  | Send(aTyp, mname, el, a) -> 
+          aTyp ^ "." ^ mname ^ String.concat ", " (List.map string_of_expr el) ^ ") | " ^ a 
 
 let string_of_ptyp = function
     Int -> "int"

@@ -111,32 +111,38 @@ let translate (globals, functions, actors, structs) =
   let handle_equal typ =
     match typ with 
     | "double"    -> L.build_fcmp L.Fcmp.Oeq
-    | "i32"       -> L.build_icmp L.Icmp.Eq
+    | "i32"       -> L.build_icmp L.Icmp.Eq 
+    | _  -> raise (Failure("incompatible type passed to equal operation: " ^typ))
   in
   let handle_neq typ =
     match typ with 
     | "double"    -> L.build_fcmp L.Fcmp.One
     | "i32"    -> L.build_icmp L.Icmp.Ne
+    | _  -> raise (Failure("incompatible type passed to neg operation: " ^typ))
   in
   let handle_less typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Olt
     | "i32"    -> L.build_icmp L.Icmp.Slt
+    | _  -> raise (Failure("incompatible type passed to less than operation: " ^typ))
   in
   let handle_leq typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Ole
     | "i32"    -> L.build_icmp L.Icmp.Sle
+    | _  -> raise (Failure("incompatible type passed to less than or equal operation: " ^typ))
   in
   let handle_greater typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Ogt
     | "i32"    -> L.build_icmp L.Icmp.Sgt
+    | _  -> raise (Failure("incompatible type passed to greater than operation: " ^typ))
   in
   let handle_geq typ =
     match typ with
     | "double"    -> L.build_fcmp L.Fcmp.Oge
     | "i32"    -> L.build_icmp L.Icmp.Sge
+    | _  -> raise (Failure("incompatible type passed to greater than or equal operation: " ^typ))
   in
   let handle_comp_binop op typ1 typ2 =
     match typ1 with
@@ -225,15 +231,6 @@ let translate (globals, functions, actors, structs) =
       let init = L.const_int (ltype_of_typ t) 0
       in StringMap.add n (L.define_global n init the_module) m in
     List.fold_left global_var StringMap.empty globals in
-
-  let global_actor_vars =
-    let global_actor_var m (t, n) = match t with
-      | A.Ptyp(Actor) -> 
-         let llvalue = StringMap.find n global_vars in
-         StringMap.add n (llvalue, StringMap.empty) m
-      | _ -> m
-    in                         
-    List.fold_left global_actor_var StringMap.empty globals in
 
   (* Declare printf(), which the print built-in function will call *)
   let printf_t = L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
@@ -325,10 +322,6 @@ let translate (globals, functions, actors, structs) =
                  with Not_found -> try StringMap.find n global_vars
                                    with Not_found -> raise (Failure ("undeclared variable " ^ n))
   in
-  let alookup n = try StringMap.find n !local_actors
-                 with Not_found -> try StringMap.find n global_actor_vars
-                                   with Not_found -> raise (Failure ("undeclared actor " ^ n))
-  in
   
   let rec expr builder = function
       A.IntLit i -> L.const_int i32_t i
@@ -358,20 +351,14 @@ let translate (globals, functions, actors, structs) =
           A.Neg     -> L.build_neg
         | A.Not     -> L.build_not) e' "tmp" builder
     | A.Assign (s, e) -> let e' = expr builder e in
-	                 ignore (L.build_store e' (lookup s) builder);
-                         (match e with
-                         | A.NewActor(a, act) ->
-                            (* update the actor's funcMap now that we know the actual actor type *)
-                            let (_, _, funcMap) = StringMap.find a actor_decls in
-                            let (llvalue, _) = alookup s in
-                            local_actors := StringMap.add s (llvalue, funcMap) !local_actors; ()
-                         | _ -> ()); e'
+                ignore (L.build_store e' (lookup s) builder); e'
     | A.Call("pthread_create", actuals) ->
        let f = (match (List.hd actuals) with 
                   A.Id s -> s
                 | _ -> raise(Failure ("expected valid func id for pthread()"))) in 
 
-       let act_func_name = match actuals with hd :: tl -> A.string_of_expr hd in
+       let act_func_name = match actuals with 
+                    hd :: tl -> A.string_of_expr hd in
        let act_args = match actuals with hd :: tl -> tl in 
        let act_list_vals = List.map (expr builder) act_args in
        let act_list_types = List.map (L.type_of) act_list_vals in
