@@ -91,7 +91,7 @@ Installation under OS X
    different location for you, so make sure you symlink to the right
    directory.
 
-9. To run and test, navigate to the Theatr folder. Once there, run
+9. To run and test, navigate to the Theatr folder inside src/. Once there, run
 
    make ; ./testall.sh
 
