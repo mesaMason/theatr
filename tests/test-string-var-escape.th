@@ -1,4 +1,4 @@
 func main() -> int:
-    string escape = "\"\'\\\\n\ttest"
+    string escape = "\"\n\ttest"
     print(escape)
     return 0
