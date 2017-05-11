@@ -8,6 +8,15 @@ Linda Orgeta
 
 Coded in OCaml, this is an actor-based language compiled into LLVM IR.
 
+Quick start instructions:
+In theatr/src, run 'make'. Then run './testall.sh' to run all tests.
+
+To build the binary for and execute a single .th file,
+run './run.sh <filename.th>'
+
+
+Reference:
+
 Based off the MicroC compiler provided by Professor Stephen Edwards for
 COMS 4115 PLT.
 
